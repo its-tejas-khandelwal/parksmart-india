@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}DB Viewer — ParkSmart{% endblock %}
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold">Database Viewer</h1>
+    <p class="text-gray-500 text-sm mt-1">Live view of all database records</p>
+  </div>
+  <a href="{{ url_for('admin_dashboard') }}" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Admin
+  </a>
+</div>
+
+<!-- Users -->
+<div class="bento bg-white dark:bg-slate-900 mb-6">
+  <h2 class="font-bold text-lg mb-4">👥 Users ({{ users|length }})</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-gray-500 border-b dark:border-slate-700">
+        <th class="pb-2 pr-4">ID</th><th class="pb-2 pr-4">Name</th><th class="pb-2 pr-4">Email</th>
+        <th class="pb-2 pr-4">Role</th><th class="pb-2 pr-4">Approved</th><th class="pb-2">Joined</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+        {% for u in users %}
+        <tr>
+          <td class="py-2 pr-4 text-gray-400">{{ u.id }}</td>
+          <td class="py-2 pr-4 font-medium">{{ u.name }}</td>
+          <td class="py-2 pr-4 text-gray-500">{{ u.email }}</td>
+          <td class="py-2 pr-4"><span class="px-2 py-0.5 rounded text-xs font-semibold
+            {% if u.role=='admin' %}bg-purple-100 text-purple-700
+            {% elif u.role=='vendor' %}bg-blue-100 text-blue-700
+            {% else %}bg-emerald-100 text-emerald-700{% endif %}">{{ u.role }}</span></td>
+          <td class="py-2 pr-4">{% if u.is_approved %}✅{% else %}⏳{% endif %}</td>
+          <td class="py-2 text-xs text-gray-400">{{ u.created_at.strftime('%d %b %Y') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Lots -->
+<div class="bento bg-white dark:bg-slate-900 mb-6">
+  <h2 class="font-bold text-lg mb-4">🅿️ Parking Lots ({{ lots|length }})</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-gray-500 border-b dark:border-slate-700">
+        <th class="pb-2 pr-4">ID</th><th class="pb-2 pr-4">Name</th><th class="pb-2 pr-4">City</th>
+        <th class="pb-2 pr-4">Slots</th><th class="pb-2 pr-4">Rates (2W/4W)</th><th class="pb-2">Active</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+        {% for lot in lots %}
+        <tr>
+          <td class="py-2 pr-4 text-gray-400">{{ lot.id }}</td>
+          <td class="py-2 pr-4 font-medium">{{ lot.name }}</td>
+          <td class="py-2 pr-4 text-gray-500">{{ lot.city }}</td>
+          <td class="py-2 pr-4">{{ lot.total_slots }}</td>
+          <td class="py-2 pr-4 text-gray-500">₹{{ lot.rate_2w }} / ₹{{ lot.rate_4w }}</td>
+          <td class="py-2">{% if lot.is_active %}✅{% else %}⏳ Pending{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Reservations -->
+<div class="bento bg-white dark:bg-slate-900">
+  <h2 class="font-bold text-lg mb-4">📋 Reservations ({{ reservations|length }})</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-gray-500 border-b dark:border-slate-700">
+        <th class="pb-2 pr-4">ID</th><th class="pb-2 pr-4">Customer</th><th class="pb-2 pr-4">Lot/Slot</th>
+        <th class="pb-2 pr-4">Vehicle</th><th class="pb-2 pr-4">Entry</th><th class="pb-2 pr-4">Status</th><th class="pb-2">Amount</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+        {% for r in reservations %}
+        <tr>
+          <td class="py-2 pr-4 text-gray-400">{{ r.id }}</td>
+          <td class="py-2 pr-4 font-medium">{{ r.customer.name }}</td>
+          <td class="py-2 pr-4 text-gray-500">{{ r.slot.lot.name }} / {{ r.slot.label }}</td>
+          <td class="py-2 pr-4">{{ r.vehicle_no }}</td>
+          <td class="py-2 pr-4 text-xs">{{ r.entry_time.strftime('%d %b %Y %H:%M') }}</td>
+          <td class="py-2 pr-4"><span class="px-2 py-0.5 rounded text-xs font-semibold
+            {% if r.status=='active' %}bg-emerald-100 text-emerald-700{% else %}bg-gray-100 text-gray-600{% endif %}">
+            {{ r.status }}</span></td>
+          <td class="py-2 font-medium">{% if r.amount_paid %}₹{{ r.amount_paid }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

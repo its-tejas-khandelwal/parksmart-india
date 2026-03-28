@@ -1,71 +1,115 @@
 {% extends "base.html" %}
-{% block title %}Admin Dashboard — ParkSmart India{% endblock %}
+{% block title %}Admin Dashboard — ParkSmart{% endblock %}
 {% block content %}
-<div class="container" style="padding-top:36px;padding-bottom:60px;">
-  <div style="margin-bottom:28px;">
-    <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;background:rgba(99,102,241,.12);margin-bottom:8px;">
-      <span style="font-size:11px;font-weight:700;color:#6366f1;font-family:'JetBrains Mono',monospace;">⚡ SUPER ADMIN</span>
-    </div>
-    <h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.8rem;color:var(--txt);">Platform Overview</h1>
+<div class="flex items-center justify-between mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Platform overview & management</p>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">
-    <div class="stat-card"><div class="stat-icon" style="background:#6366f11a;font-size:18px;">👥</div><div class="stat-num">{{ users|length }}</div><div class="stat-label">Total Users</div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:#10b9811a;font-size:18px;">🏢</div><div class="stat-num">{{ lots|selectattr('status.value','eq','active')|list|length }}</div><div class="stat-label">Active Lots</div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:#f59e0b1a;font-size:18px;">💰</div><div class="stat-num">₹{{ total_rev|round(0,'floor')|int }}</div><div class="stat-label">Revenue</div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:#0ea5e91a;font-size:18px;">🎫</div><div class="stat-num">{{ today_bookings }}</div><div class="stat-label">Today Bookings</div></div>
+  <a href="{{ url_for('admin_db_view') }}" class="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-xl hover:bg-slate-700">
+    <i data-lucide="database" class="w-4 h-4"></i> View DB
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  {% for label,val,icon,color in [
+    ('Total Vendors', vendors|length, 'building-2', 'blue'),
+    ('Total Customers', customers|length, 'users', 'emerald'),
+    ('Total Lots', lots|length, 'map-pin', 'purple'),
+    ('Active Lots', lots|selectattr('is_active')|list|length, 'check-circle', 'green'),
+  ] %}
+  <div class="bento bg-white dark:bg-slate-900">
+    <i data-lucide="{{ icon }}" class="w-6 h-6 text-{{ color }}-500 mb-3"></i>
+    <div class="text-2xl font-bold">{{ val }}</div>
+    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ label }}</div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-    <div class="ps-card" style="overflow:hidden;">
-      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;color:var(--txt);">⏳ Pending Approvals</div>
-        <span class="badge badge-yellow">{{ pending|length }}</span>
-      </div>
-      {% if pending %}
-      {% for lot in pending %}
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);">
+  {% endfor %}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Vendor Approvals -->
+  <div class="bento bg-white dark:bg-slate-900">
+    <h2 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="user-check" class="w-5 h-5 text-emerald-500"></i> Vendors</h2>
+    {% if vendors %}
+    <div class="space-y-3">
+      {% for v in vendors %}
+      <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-slate-800">
         <div>
-          <div style="font-weight:600;font-size:14px;color:var(--txt);">{{ lot.name }}</div>
-          <div style="font-size:12px;color:var(--muted);">{{ lot.owner.full_name }} · {{ lot.city }}</div>
+          <p class="font-medium text-sm">{{ v.name }}</p>
+          <p class="text-xs text-gray-500">{{ v.email }}</p>
         </div>
-        <div style="display:flex;gap:8px;">
-          <form method="POST" action="{{ url_for('approve_lot', lot_id=lot.id) }}" style="display:inline;">
-            <button type="submit" class="btn-success" style="padding:6px 12px;font-size:12px;">✓ Approve</button>
-          </form>
-          <form method="POST" action="{{ url_for('reject_lot', lot_id=lot.id) }}" style="display:inline;">
-            <button type="submit" class="btn-danger" style="padding:6px 12px;font-size:12px;">✗ Reject</button>
-          </form>
-        </div>
+        {% if not v.is_approved %}
+        <form method="POST" action="{{ url_for('approve_vendor', uid=v.id) }}">
+          <button class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-emerald-700">Approve</button>
+        </form>
+        {% else %}
+        <span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs px-3 py-1 rounded-full">Approved ✓</span>
+        {% endif %}
       </div>
       {% endfor %}
-      {% else %}
-      <div style="padding:32px;text-align:center;color:var(--muted);font-size:14px;">✅ No pending approvals</div>
-      {% endif %}
     </div>
-    <div class="ps-card" style="overflow:hidden;">
-      <div style="padding:16px 20px;border-bottom:1px solid var(--border);"><div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;color:var(--txt);">🏢 All Lots</div></div>
-      <div style="overflow-x:auto;"><table class="ps-table"><thead><tr><th>Name</th><th>Owner</th><th>Status</th><th>Slots</th></tr></thead><tbody>
-        {% for lot in lots %}<tr>
-          <td style="font-weight:600;font-size:13px;">{{ lot.name[:22] }}</td>
-          <td style="font-size:12px;color:var(--muted);">{{ lot.owner.full_name.split()[0] }}</td>
-          <td><span class="badge {{ 'badge-green' if lot.status.value=='active' else 'badge-yellow' if lot.status.value=='pending' else 'badge-red' }}">{{ lot.status.value }}</span></td>
-          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">{{ lot.slots|length }}</td>
-        </tr>{% endfor %}
-      </tbody></table></div>
-    </div>
-    <div class="ps-card" style="overflow:hidden;grid-column:span 2;">
-      <div style="padding:16px 20px;border-bottom:1px solid var(--border);"><div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;color:var(--txt);">👥 All Users</div></div>
-      <div style="overflow-x:auto;"><table class="ps-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>
-        {% for u in users %}{% if u.role.value != 'super_admin' %}<tr>
-          <td style="font-weight:600;font-size:13px;">{{ u.full_name }}</td>
-          <td style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;">{{ u.email }}</td>
-          <td><span class="badge {{ 'badge-green' if u.role.value=='vendor' else 'badge-blue' }}">{{ u.role.value }}</span></td>
-          <td><span class="badge {{ 'badge-green' if u.is_active else 'badge-red' }}">{{ 'Active' if u.is_active else 'Suspended' }}</span></td>
-          <td><form method="POST" action="{{ url_for('toggle_user', user_id=u.id) }}" style="display:inline;">
-            <button type="submit" class="{{ 'btn-danger' if u.is_active else 'btn-success' }}" style="padding:5px 10px;font-size:11px;">{{ 'Suspend' if u.is_active else 'Activate' }}</button>
-          </form></td>
-        </tr>{% endif %}{% endfor %}
-      </tbody></table></div>
-    </div>
+    {% else %}
+    <p class="text-gray-400 text-sm">No vendors registered yet.</p>
+    {% endif %}
   </div>
+
+  <!-- Lot Approvals -->
+  <div class="bento bg-white dark:bg-slate-900">
+    <h2 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="map-pin" class="w-5 h-5 text-blue-500"></i> Parking Lots</h2>
+    {% if lots %}
+    <div class="space-y-3">
+      {% for lot in lots %}
+      <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-slate-800">
+        <div>
+          <p class="font-medium text-sm">{{ lot.name }}</p>
+          <p class="text-xs text-gray-500">{{ lot.city }} · {{ lot.total_slots }} slots · Owner: {{ lot.owner.name }}</p>
+        </div>
+        {% if not lot.is_active %}
+        <form method="POST" action="{{ url_for('approve_lot', lid=lot.id) }}">
+          <button class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-700">Approve</button>
+        </form>
+        {% else %}
+        <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs px-3 py-1 rounded-full">Active ✓</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-400 text-sm">No lots added yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Recent Reservations -->
+<div class="bento bg-white dark:bg-slate-900 mt-6">
+  <h2 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="list" class="w-5 h-5 text-purple-500"></i> Recent Bookings</h2>
+  {% if reservations %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-gray-500 text-xs border-b dark:border-slate-700">
+        <th class="pb-2">Customer</th><th class="pb-2">Vehicle</th><th class="pb-2">Lot / Slot</th><th class="pb-2">Entry</th><th class="pb-2">Status</th><th class="pb-2">Amount</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+        {% for r in reservations %}
+        <tr>
+          <td class="py-2">{{ r.customer.name }}</td>
+          <td class="py-2">{{ r.vehicle_no }} ({{ r.vehicle_type }})</td>
+          <td class="py-2">{{ r.slot.lot.name }} / {{ r.slot.label }}</td>
+          <td class="py-2 text-xs">{{ r.entry_time.strftime('%d %b, %I:%M %p') }}</td>
+          <td class="py-2">
+            <span class="px-2 py-0.5 rounded-full text-xs {% if r.status=='active' %}bg-emerald-100 text-emerald-700{% else %}bg-gray-100 text-gray-600{% endif %}">
+              {{ r.status }}
+            </span>
+          </td>
+          <td class="py-2 font-medium">{% if r.amount_paid %}₹{{ r.amount_paid }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-gray-400 text-sm">No bookings yet.</p>
+  {% endif %}
 </div>
 {% endblock %}

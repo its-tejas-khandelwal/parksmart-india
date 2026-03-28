@@ -1,141 +1,81 @@
 {% extends "base.html" %}
-{% block title %}My Dashboard — ParkSmart India{% endblock %}
+{% block title %}My Bookings — ParkSmart{% endblock %}
 {% block content %}
-<div class="container" style="padding-top:36px;padding-bottom:60px;">
-
-  <!-- Header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;">
-    <div>
-      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;background:var(--glow);margin-bottom:8px;">
-        <span class="live-dot"></span>
-        <span style="font-size:11px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;">CUSTOMER PORTAL</span>
-      </div>
-      <h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.8rem;color:var(--txt);">Hello, {{ current_user.full_name.split()[0] }}! 👋</h1>
-      <p style="font-size:14px;color:var(--muted);margin-top:4px;">Manage your bookings and passes</p>
-    </div>
-    <a href="{{ url_for('lots_list') }}" class="btn-primary" style="font-size:14px;">🚗 Find Parking</a>
+<div class="flex items-center justify-between mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">My Bookings</h1>
+    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Welcome, {{ current_user.name }}!</p>
   </div>
+  <a href="{{ url_for('lots_list') }}" class="flex items-center gap-2 bg-emerald-600 text-white text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-700">
+    <i data-lucide="plus" class="w-4 h-4"></i> Book Parking
+  </a>
+</div>
 
-  <!-- Stats row -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
-    {% set total = reservations|length %}
-    {% set active_count = reservations|selectattr('status.value','eq','active')|list|length %}
-    {% set completed_count = reservations|selectattr('status.value','eq','completed')|list|length %}
-    {% set grace_saved = reservations|selectattr('is_grace','eq',true)|list|length %}
-    {% for v,l,icon,c in [
-      (total,'Total Bookings','🎫','#6366f1'),
-      (active_count,'Active Pass','📱','#10b981'),
-      (completed_count,'Completed','✅','#f59e0b'),
-      (grace_saved,'Grace Saves','🎁','#0ea5e9'),
-    ] %}
-    <div class="stat-card">
-      <div class="stat-icon" style="background:{{c}}1a;font-size:18px;">{{icon}}</div>
-      <div class="stat-num">{{v}}</div>
-      <div class="stat-label">{{l}}</div>
-    </div>
-    {% endfor %}
+<!-- Stats -->
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+  {% set active = reservations|selectattr('status','eq','active')|list %}
+  {% set completed = reservations|selectattr('status','eq','completed')|list %}
+  {% set total_paid = completed|sum(attribute='amount_paid') %}
+  <div class="bento bg-white dark:bg-slate-900">
+    <i data-lucide="clock" class="w-6 h-6 text-emerald-500 mb-3"></i>
+    <div class="text-2xl font-bold text-emerald-600">{{ active|length }}</div>
+    <div class="text-xs text-gray-500 mt-1">Active Booking</div>
   </div>
-
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:start;">
-
-    <!-- Bookings table -->
-    <div class="ps-card" style="overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);">
-        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;color:var(--txt);">🕐 My Bookings</div>
-        <a href="{{ url_for('my_bookings') }}" style="font-size:13px;color:var(--accent);">View all →</a>
-      </div>
-      {% if reservations %}
-      <div style="overflow-x:auto;">
-        <table class="ps-table">
-          <thead>
-            <tr>
-              <th>Pass ID</th>
-              <th>Slot</th>
-              <th>Vehicle</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in reservations %}
-            <tr>
-              <td>
-                <a href="{{ url_for('view_pass', res_id=r.id) }}" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;color:var(--accent);">
-                  PS-{{ r.id[:8]|upper }}
-                </a>
-              </td>
-              <td>
-                <span class="badge badge-blue" style="font-size:11px;">{{ r.slot.slot_number }}</span>
-              </td>
-              <td>
-                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;">{{ r.vehicle_number }}</span>
-              </td>
-              <td>
-                <span class="badge {{'badge-green' if r.status.value=='completed' else 'badge-blue' if r.status.value=='active' else 'badge-yellow' if r.status.value=='pending' else 'badge-red'}}">
-                  {{ r.status.value|upper }}
-                </span>
-              </td>
-              <td>
-                <a href="{{ url_for('view_pass', res_id=r.id) }}" class="btn-success" style="padding:5px 12px;font-size:12px;">View Pass</a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <div style="text-align:center;padding:48px 24px;color:var(--muted);">
-        <div style="font-size:48px;margin-bottom:12px;">🚗</div>
-        <div style="font-size:15px;font-weight:600;color:var(--txt);margin-bottom:6px;">No bookings yet</div>
-        <p style="font-size:13px;margin-bottom:16px;">Find a parking lot and make your first booking!</p>
-        <a href="{{ url_for('lots_list') }}" class="btn-primary">Find Parking →</a>
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Right sidebar -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-
-      {% if active_reservation %}
-      <!-- Active pass card -->
-      <div style="border-radius:1.25rem;overflow:hidden;background:linear-gradient(135deg,#10b981,#059669);padding:20px;position:relative;">
-        <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.1);"></div>
-        <div style="position:relative;z-index:1;">
-          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);font-family:'JetBrains Mono',monospace;letter-spacing:.08em;margin-bottom:4px;">ACTIVE PASS</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.3rem;color:white;">PS-{{ active_reservation.id[:8]|upper }}</div>
-          <div style="margin-top:12px;space-y:4px;">
-            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span style="color:rgba(255,255,255,.7);">Slot</span><span style="color:white;font-weight:700;font-family:'JetBrains Mono',monospace;">{{ active_reservation.slot.slot_number }}</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:rgba(255,255,255,.7);">Lot</span><span style="color:white;font-weight:600;">{{ active_reservation.slot.lot.name[:18] }}</span></div>
-          </div>
-          <a href="{{ url_for('view_pass', res_id=active_reservation.id) }}" style="display:block;text-align:center;margin-top:14px;padding:10px;background:rgba(255,255,255,.2);border-radius:10px;color:white;font-weight:600;font-size:13px;text-decoration:none;">View QR Pass →</a>
-        </div>
-      </div>
-      {% endif %}
-
-      <!-- Quick links -->
-      <div class="ps-card" style="padding:20px;">
-        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;color:var(--txt);margin-bottom:14px;">⚡ Quick Actions</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          {% for href, icon, label in [
-            (url_for('lots_list'),'🔍','Find Parking Lots'),
-            (url_for('my_bookings'),'📋','All My Bookings'),
-          ] %}
-          <a href="{{href}}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);color:var(--txt);font-size:13px;font-weight:500;transition:border-color .2s,color .2s;"
-             onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-             onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--txt)'">
-            <span>{{icon}}</span> {{label}} <span style="margin-left:auto;color:var(--muted);">→</span>
-          </a>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Info card -->
-      <div class="ps-card" style="padding:20px;background:var(--glow);border-color:rgba(16,185,129,.2);">
-        <div style="font-size:24px;margin-bottom:8px;">🎁</div>
-        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;color:var(--txt);margin-bottom:4px;">15-Min Grace Period!</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6;">Park for under 15 minutes? You pay ₹0. First 15 minutes are completely free.</div>
-      </div>
-    </div>
+  <div class="bento bg-white dark:bg-slate-900">
+    <i data-lucide="check-circle" class="w-6 h-6 text-blue-500 mb-3"></i>
+    <div class="text-2xl font-bold">{{ completed|length }}</div>
+    <div class="text-xs text-gray-500 mt-1">Completed</div>
+  </div>
+  <div class="bento bg-white dark:bg-slate-900 col-span-2 md:col-span-1">
+    <i data-lucide="indian-rupee" class="w-6 h-6 text-purple-500 mb-3"></i>
+    <div class="text-2xl font-bold">₹{{ total_paid or 0 }}</div>
+    <div class="text-xs text-gray-500 mt-1">Total Spent</div>
   </div>
 </div>
+
+{% if reservations %}
+<div class="space-y-4">
+  {% for r in reservations %}
+  <div class="bento bg-white dark:bg-slate-900 hover:shadow-lg transition">
+    <div class="flex items-start justify-between">
+      <div class="flex-1">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="font-bold text-lg">{{ r.slot.lot.name }}</span>
+          <span class="{% if r.status=='active' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300{% else %}bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-400{% endif %} text-xs px-2 py-0.5 rounded-full font-semibold">
+            {{ r.status|upper }}
+          </span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-500">
+          <span><strong class="text-gray-700 dark:text-gray-300">Slot:</strong> {{ r.slot.label }}</span>
+          <span><strong class="text-gray-700 dark:text-gray-300">Vehicle:</strong> {{ r.vehicle_no }}</span>
+          <span><strong class="text-gray-700 dark:text-gray-300">Entry:</strong> {{ r.entry_time.strftime('%d %b, %I:%M %p') }}</span>
+          {% if r.exit_time %}
+          <span><strong class="text-gray-700 dark:text-gray-300">Amount:</strong> ₹{{ r.amount_paid }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="flex gap-2 ml-4">
+        <a href="{{ url_for('digital_pass', rid=r.id) }}"
+           class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition">
+          View Pass
+        </a>
+        {% if r.status == 'active' %}
+        <form method="POST" action="{{ url_for('checkout', rid=r.id) }}">
+          <button class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition">
+            Checkout
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-20 text-gray-400">
+  <i data-lucide="parking-circle" class="w-16 h-16 mx-auto mb-4 opacity-30"></i>
+  <p class="text-lg font-medium">No bookings yet</p>
+  <a href="{{ url_for('lots_list') }}" class="text-emerald-600 text-sm mt-1 block hover:underline">Find a parking lot →</a>
+</div>
+{% endif %}
 {% endblock %}

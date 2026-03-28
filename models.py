@@ -1,170 +1,94 @@
-"""
-ParkSmart India — Database Models
-No IoT hardware required. Slot status managed via web UI.
-"""
-from datetime import datetime, timezone
-from decimal import Decimal
-import uuid
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-from sqlalchemy import (
-    Boolean, Column, DateTime, Enum, ForeignKey,
-    Integer, Numeric, String, Text
-)
-from sqlalchemy.orm import relationship
-import enum
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+import secrets
 
 db = SQLAlchemy()
 
-def _uuid():
-    return str(uuid.uuid4())
-
-def _now():
-    return datetime.now(timezone.utc)
-
-# ── Enums ────────────────────────────────────────────────────────
-class UserRole(enum.Enum):
-    super_admin = "super_admin"
-    vendor      = "vendor"
-    customer    = "customer"
-
-class SlotType(enum.Enum):
-    TW = "2W"   # Two Wheeler
-    FW = "4W"   # Four Wheeler
-
-class SlotStatus(enum.Enum):
-    available   = "available"
-    occupied    = "occupied"
-    reserved    = "reserved"
-    maintenance = "maintenance"
-
-class ReservationStatus(enum.Enum):
-    pending   = "pending"
-    active    = "active"
-    completed = "completed"
-    cancelled = "cancelled"
-
-class LotStatus(enum.Enum):
-    pending  = "pending"
-    active   = "active"
-    inactive = "inactive"
-    rejected = "rejected"
-
-# ── Models ───────────────────────────────────────────────────────
 class User(UserMixin, db.Model):
-    __tablename__ = "users"
-    id            = Column(String(36), primary_key=True, default=_uuid)
-    role          = Column(Enum(UserRole), nullable=False, default=UserRole.customer)
-    full_name     = Column(String(120), nullable=False)
-    email         = Column(String(255), unique=True, nullable=False, index=True)
-    phone         = Column(String(15))
-    password_hash = Column(String(255), nullable=False)
-    is_active     = Column(Boolean, default=True)
-    is_verified   = Column(Boolean, default=False)
-    business_name = Column(String(200))
-    created_at    = Column(DateTime(timezone=True), default=_now)
+    __tablename__ = 'users'
+    id           = db.Column(db.Integer, primary_key=True)
+    name         = db.Column(db.String(100), nullable=False)
+    email        = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash= db.Column(db.String(256), nullable=False)
+    role         = db.Column(db.String(20), nullable=False, default='customer')
+    phone        = db.Column(db.String(15))
+    is_approved  = db.Column(db.Boolean, default=True)
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
 
-    lots         = relationship("ParkingLot",  back_populates="owner",
-                                foreign_keys="ParkingLot.owner_id",
-                                cascade="all, delete-orphan")
-    reservations = relationship("Reservation", back_populates="customer",
-                                foreign_keys="Reservation.customer_id")
+    lots         = db.relationship('ParkingLot', backref='owner', lazy=True, cascade='all, delete-orphan')
+    reservations = db.relationship('Reservation', backref='customer', lazy=True, cascade='all, delete-orphan')
 
-    def __repr__(self):
-        return f"<User {self.email} [{self.role.value}]>"
+    def set_password(self, pw):
+        self.password_hash = generate_password_hash(pw)
+
+    def check_password(self, pw):
+        return check_password_hash(self.password_hash, pw)
+
+    def to_dict(self):
+        return {'id': self.id, 'name': self.name, 'email': self.email, 'role': self.role}
 
 
 class ParkingLot(db.Model):
-    __tablename__ = "parking_lots"
-    id          = Column(String(36), primary_key=True, default=_uuid)
-    owner_id    = Column(String(36), ForeignKey("users.id"), nullable=False)
-    name        = Column(String(200), nullable=False)
-    address     = Column(Text, nullable=False)
-    city        = Column(String(100), nullable=False)
-    state       = Column(String(100), default="Uttar Pradesh")
-    latitude    = Column(Numeric(9, 6), nullable=False)
-    longitude   = Column(Numeric(9, 6), nullable=False)
-    rate_2w     = Column(Numeric(6, 2), default=Decimal("10.00"))
-    rate_4w     = Column(Numeric(6, 2), default=Decimal("30.00"))
-    opens_at    = Column(String(5), default="00:00")
-    closes_at   = Column(String(5), default="23:59")
-    status      = Column(Enum(LotStatus), default=LotStatus.pending)
-    photo_url   = Column(String(512))
-    created_at  = Column(DateTime(timezone=True), default=_now)
+    __tablename__ = 'parking_lots'
+    id          = db.Column(db.Integer, primary_key=True)
+    owner_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name        = db.Column(db.String(150), nullable=False)
+    address     = db.Column(db.String(300), nullable=False)
+    city        = db.Column(db.String(100), nullable=False)
+    latitude    = db.Column(db.Float, nullable=False)
+    longitude   = db.Column(db.Float, nullable=False)
+    total_slots = db.Column(db.Integer, nullable=False)
+    rate_2w     = db.Column(db.Numeric(8,2), nullable=False)
+    rate_4w     = db.Column(db.Numeric(8,2), nullable=False)
+    is_active   = db.Column(db.Boolean, default=False)
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
 
-    owner  = relationship("User", back_populates="lots", foreign_keys=[owner_id])
-    slots  = relationship("ParkingSlot", back_populates="lot",
-                          cascade="all, delete-orphan")
+    slots = db.relationship('ParkingSlot', backref='lot', lazy=True, cascade='all, delete-orphan')
 
     @property
-    def available_2w(self):
-        return sum(1 for s in self.slots
-                   if s.slot_type == SlotType.TW and s.status == SlotStatus.available)
+    def available_count(self):
+        return sum(1 for s in self.slots if s.status == 'available')
 
     @property
-    def available_4w(self):
-        return sum(1 for s in self.slots
-                   if s.slot_type == SlotType.FW and s.status == SlotStatus.available)
-
-    @property
-    def total_available(self):
-        return sum(1 for s in self.slots if s.status == SlotStatus.available)
+    def occupied_count(self):
+        return sum(1 for s in self.slots if s.status == 'occupied')
 
     def to_dict(self):
         return {
-            "id":       self.id,
-            "name":     self.name,
-            "address":  self.address,
-            "city":     self.city,
-            "lat":      float(self.latitude),
-            "lng":      float(self.longitude),
-            "rate_2w":  float(self.rate_2w),
-            "rate_4w":  float(self.rate_4w),
-            "avail_2w": self.available_2w,
-            "avail_4w": self.available_4w,
-            "total":    len(self.slots),
+            'id': self.id, 'name': self.name, 'address': self.address,
+            'city': self.city, 'lat': self.latitude, 'lng': self.longitude,
+            'total': self.total_slots, 'available': self.available_count,
+            'occupied': self.occupied_count,
+            'rate_2w': float(self.rate_2w), 'rate_4w': float(self.rate_4w),
         }
 
 
 class ParkingSlot(db.Model):
-    __tablename__ = "parking_slots"
-    id          = Column(String(36), primary_key=True, default=_uuid)
-    lot_id      = Column(String(36), ForeignKey("parking_lots.id"), nullable=False)
-    slot_number = Column(String(20), nullable=False)
-    slot_type   = Column(Enum(SlotType), nullable=False)
-    status      = Column(Enum(SlotStatus), default=SlotStatus.available)
-    floor       = Column(String(10), default="G")
-    updated_at  = Column(DateTime(timezone=True), default=_now, onupdate=_now)
+    __tablename__ = 'parking_slots'
+    id        = db.Column(db.Integer, primary_key=True)
+    lot_id    = db.Column(db.Integer, db.ForeignKey('parking_lots.id'), nullable=False)
+    label     = db.Column(db.String(10), nullable=False)
+    status    = db.Column(db.String(20), nullable=False, default='available')
+    slot_type = db.Column(db.String(5), default='4w')
 
-    lot          = relationship("ParkingLot", back_populates="slots")
-    reservations = relationship("Reservation", back_populates="slot")
+    reservations = db.relationship('Reservation', backref='slot', lazy=True)
 
     def to_dict(self):
-        return {
-            "id":     self.id,
-            "number": self.slot_number,
-            "type":   self.slot_type.value,
-            "status": self.status.value,
-            "floor":  self.floor,
-        }
+        return {'id': self.id, 'label': self.label, 'status': self.status, 'type': self.slot_type}
 
 
 class Reservation(db.Model):
-    __tablename__ = "reservations"
-    id             = Column(String(36), primary_key=True, default=_uuid)
-    customer_id    = Column(String(36), ForeignKey("users.id"), nullable=False)
-    slot_id        = Column(String(36), ForeignKey("parking_slots.id"), nullable=False)
-    vehicle_number = Column(String(20), nullable=False)
-    vehicle_type   = Column(Enum(SlotType), nullable=False)
-    status         = Column(Enum(ReservationStatus), default=ReservationStatus.pending)
-    qr_token       = Column(String(64), unique=True, default=lambda: uuid.uuid4().hex)
-    booked_at      = Column(DateTime(timezone=True), default=_now)
-    entry_time     = Column(DateTime(timezone=True))
-    exit_time      = Column(DateTime(timezone=True))
-    duration_mins  = Column(Integer)
-    amount_charged = Column(Numeric(8, 2))
-    is_grace       = Column(Boolean, default=False)
-
-    customer = relationship("User", back_populates="reservations",
-                            foreign_keys=[customer_id])
-    slot     = relationship("ParkingSlot", back_populates="reservations")
+    __tablename__ = 'reservations'
+    id           = db.Column(db.Integer, primary_key=True)
+    customer_id  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    slot_id      = db.Column(db.Integer, db.ForeignKey('parking_slots.id'), nullable=False)
+    vehicle_no   = db.Column(db.String(20), nullable=False)
+    vehicle_type = db.Column(db.String(5), nullable=False)
+    entry_time   = db.Column(db.DateTime, default=datetime.utcnow)
+    exit_time    = db.Column(db.DateTime)
+    amount_paid  = db.Column(db.Numeric(10,2), default=0)
+    status       = db.Column(db.String(20), default='active')
+    qr_token     = db.Column(db.String(64), unique=True, default=lambda: secrets.token_hex(32))
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
