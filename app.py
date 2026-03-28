@@ -488,6 +488,152 @@ def health():
         return jsonify({'status': 'error ❌', 'error': str(e)}), 500
 
 
+
+# ── Account / Profile ──────────────────────────────────────────────────────────
+@app.route('/account', methods=['GET', 'POST'])
+@login_required
+def account():
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'update_profile':
+            name  = request.form.get('name', '').strip()
+            phone = request.form.get('phone', '').strip()
+            if name and len(name) >= 3:
+                current_user.name  = name
+                current_user.phone = phone
+                db.session.commit()
+                flash('Profile updated successfully!', 'success')
+            else:
+                flash('Name must be at least 3 characters.', 'danger')
+        elif action == 'change_password':
+            old_pw  = request.form.get('old_password', '')
+            new_pw  = request.form.get('new_password', '')
+            conf_pw = request.form.get('confirm_password', '')
+            if not current_user.check_password(old_pw):
+                flash('Current password is incorrect.', 'danger')
+            elif len(new_pw) < 8:
+                flash('New password must be at least 8 characters.', 'danger')
+            elif new_pw != conf_pw:
+                flash('Passwords do not match.', 'danger')
+            else:
+                current_user.set_password(new_pw)
+                db.session.commit()
+                flash('Password changed successfully!', 'success')
+        return redirect(url_for('account'))
+
+    if current_user.role == 'customer':
+        reservations = Reservation.query.filter_by(customer_id=current_user.id).order_by(Reservation.created_at.desc()).all()
+        total_spent  = sum(float(r.amount_paid or 0) for r in reservations if r.status == 'completed')
+        stats = {
+            'total_bookings': len(reservations),
+            'active':   sum(1 for r in reservations if r.status == 'active'),
+            'completed': sum(1 for r in reservations if r.status == 'completed'),
+            'total_spent': round(total_spent, 2),
+            'recent': reservations[:5],
+        }
+    elif current_user.role == 'vendor':
+        lots  = ParkingLot.query.filter_by(owner_id=current_user.id).all()
+        stats = {
+            'total_lots': len(lots),
+            'total_slots': sum(l.total_slots for l in lots),
+            'active_lots': sum(1 for l in lots if l.is_active),
+        }
+    else:
+        stats = {}
+    return render_template('account.html', stats=stats)
+
+
+# ── Admin Notify ───────────────────────────────────────────────────────────────
+@app.route('/admin/notify', methods=['GET', 'POST'])
+@login_required
+def admin_notify():
+    if current_user.role != 'admin':
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        title   = request.form.get('title', '').strip()
+        body    = request.form.get('body', '').strip()
+        user_id = request.form.get('user_id', 'all')
+        sent = 0
+        if user_id == 'all':
+            users = User.query.filter(User.fcm_token.isnot(None)).all()
+        else:
+            users = User.query.filter_by(id=int(user_id)).all()
+        for u in users:
+            if u.fcm_token:
+                ok = send_push_notification(u.fcm_token, title, body)
+                if ok: sent += 1
+        flash(f'Notification sent to {sent} users.', 'success')
+        return redirect(url_for('admin_notify'))
+    users     = User.query.filter(User.fcm_token.isnot(None)).all()
+    all_users = User.query.all()
+    return render_template('admin_notify.html', users=users, all_users=all_users)
+
+
+# ── Save FCM Token ─────────────────────────────────────────────────────────────
+@app.route('/save_fcm_token', methods=['POST'])
+@login_required
+def save_fcm_token():
+    try:
+        token = request.json.get('token', '').strip()
+        if token:
+            current_user.fcm_token = token
+            db.session.commit()
+            return jsonify({'status': 'saved'})
+        return jsonify({'status': 'no token'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
+
+
+# ── Customer Stats API ─────────────────────────────────────────────────────────
+@app.route('/api/customer/stats')
+@login_required
+def api_customer_stats():
+    if current_user.role != 'customer':
+        return jsonify({}), 403
+    reservations = Reservation.query.filter_by(customer_id=current_user.id).all()
+    total_spent  = sum(float(r.amount_paid or 0) for r in reservations if r.status == 'completed')
+    return jsonify({
+        'total_bookings': len(reservations),
+        'active':   sum(1 for r in reservations if r.status == 'active'),
+        'completed': sum(1 for r in reservations if r.status == 'completed'),
+        'total_spent': int(round(total_spent)),
+    })
+
+
+# ── CSV Export ─────────────────────────────────────────────────────────────────
+import csv, io as _io
+from flask import make_response
+
+@app.route('/admin/export/<string:table>')
+@login_required
+def export_csv(table):
+    if current_user.role != 'admin':
+        return redirect(url_for('index'))
+    output = _io.StringIO()
+    writer = csv.writer(output)
+    if table == 'users':
+        writer.writerow(['ID','Name','Email','Role','Phone','Approved','Created'])
+        for u in User.query.all():
+            writer.writerow([u.id, u.name, u.email, u.role, u.phone or '', u.is_approved, u.created_at])
+    elif table == 'lots':
+        writer.writerow(['ID','Name','City','Address','Total Slots','Rate 2W','Rate 4W','Active','Owner'])
+        for l in ParkingLot.query.all():
+            writer.writerow([l.id, l.name, l.city, l.address, l.total_slots, l.rate_2w, l.rate_4w, l.is_active, l.owner.email])
+    elif table == 'reservations':
+        writer.writerow(['ID','Customer','Vehicle No','Type','Lot','Slot','Entry','Exit','Amount','Status','Payment'])
+        for r in Reservation.query.order_by(Reservation.created_at.desc()).all():
+            writer.writerow([r.id, r.customer.name, r.vehicle_no, r.vehicle_type,
+                             r.slot.lot.name, r.slot.label, r.entry_time,
+                             r.exit_time or '', r.amount_paid or 0, r.status,
+                             r.payment_method or 'cash'])
+    else:
+        return "Unknown table", 404
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = f'attachment; filename=spoteasy_{table}.csv'
+    return response
+
 # ── Terms of Use ──────────────────────────────────────────────────────────────
 @app.route('/terms')
 def terms():
