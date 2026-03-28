@@ -8,15 +8,15 @@ db = SQLAlchemy()
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
-    id           = db.Column(db.Integer, primary_key=True)
-    name         = db.Column(db.String(100), nullable=False)
-    email        = db.Column(db.String(150), unique=True, nullable=False)
-    password_hash= db.Column(db.String(256), nullable=False)
-    role         = db.Column(db.String(20), nullable=False, default='customer')
-    phone        = db.Column(db.String(15))
-    is_approved  = db.Column(db.Boolean, default=True)
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    fcm_token    = db.Column(db.String(512))  # Firebase push token
+    id            = db.Column(db.Integer, primary_key=True)
+    name          = db.Column(db.String(100), nullable=False)
+    email         = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    role          = db.Column(db.String(20), nullable=False, default='customer')
+    phone         = db.Column(db.String(15))
+    is_approved   = db.Column(db.Boolean, default=True)
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    fcm_token     = db.Column(db.String(512))   # Firebase push token
 
     lots         = db.relationship('ParkingLot', backref='owner', lazy=True, cascade='all, delete-orphan')
     reservations = db.relationship('Reservation', backref='customer', lazy=True, cascade='all, delete-orphan')
@@ -41,8 +41,8 @@ class ParkingLot(db.Model):
     latitude    = db.Column(db.Float, nullable=False)
     longitude   = db.Column(db.Float, nullable=False)
     total_slots = db.Column(db.Integer, nullable=False)
-    rate_2w     = db.Column(db.Numeric(8,2), nullable=False)
-    rate_4w     = db.Column(db.Numeric(8,2), nullable=False)
+    rate_2w     = db.Column(db.Numeric(8, 2), nullable=False)
+    rate_4w     = db.Column(db.Numeric(8, 2), nullable=False)
     is_active   = db.Column(db.Boolean, default=False)
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -82,16 +82,15 @@ class ParkingSlot(db.Model):
 
 class Reservation(db.Model):
     __tablename__ = 'reservations'
-    id           = db.Column(db.Integer, primary_key=True)
-    customer_id  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    slot_id      = db.Column(db.Integer, db.ForeignKey('parking_slots.id'), nullable=False)
-    vehicle_no   = db.Column(db.String(20), nullable=False)
-    vehicle_type = db.Column(db.String(5), nullable=False)
-    entry_time   = db.Column(db.DateTime, default=datetime.utcnow)
-    exit_time    = db.Column(db.DateTime)
-    amount_paid  = db.Column(db.Numeric(10,2), default=0)
-    status       = db.Column(db.String(20), default='active')
-    qr_token      = db.Column(db.String(64), unique=True, default=lambda: secrets.token_hex(32))
-    payment_method = db.Column(db.String(20), default='cash')  # cash / upi / card
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    fcm_token    = db.Column(db.String(512))  # Firebase push token
+    id             = db.Column(db.Integer, primary_key=True)
+    customer_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    slot_id        = db.Column(db.Integer, db.ForeignKey('parking_slots.id'), nullable=False)
+    vehicle_no     = db.Column(db.String(20), nullable=False)
+    vehicle_type   = db.Column(db.String(5), nullable=False)
+    entry_time     = db.Column(db.DateTime, default=datetime.utcnow)
+    exit_time      = db.Column(db.DateTime)
+    amount_paid    = db.Column(db.Numeric(10, 2), default=0)
+    status         = db.Column(db.String(20), default='active')
+    qr_token       = db.Column(db.String(64), unique=True, default=lambda: secrets.token_hex(32))
+    payment_method = db.Column(db.String(20), default='cash')
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow)

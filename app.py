@@ -82,6 +82,9 @@ def load_user(uid):
         return db.session.get(User, int(uid))
     except (ValueError, TypeError):
         return None
+    except Exception:
+        db.session.rollback()
+        return None
 
 with app.app_context():
     try:
@@ -483,10 +486,16 @@ def health():
         return jsonify({'status': 'error ❌', 'error': str(e)}), 500
 
 @app.errorhandler(404)
-def not_found(e): return render_template('404.html'), 404
+def not_found(e):
+    return render_template('404.html'), 404
 
 @app.errorhandler(500)
-def server_error(e): return render_template('500.html'), 500
+def server_error(e):
+    db.session.rollback()  # Always rollback on 500 to clear bad transaction
+    try:
+        return render_template('500.html'), 500
+    except Exception:
+        return "<h1>500 - Server Error</h1><a href='/'>Go Home</a>", 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
