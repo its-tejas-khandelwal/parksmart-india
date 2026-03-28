@@ -153,63 +153,65 @@
     <!-- Checkout with payment options -->
     {% if res.status == 'active' %}
     <div class="card">
-      <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">💳 Select Payment Method & Checkout</p>
+      <p class="text-sm font-black text-gray-700 dark:text-gray-300 mb-3">💳 Select Payment & Checkout</p>
       <form method="POST" action="{{ url_for('checkout', rid=res.id) }}" id="checkoutForm">
-        <input type="hidden" name="payment_method" id="payMethodInput" value="upi"/>
-        <div class="grid grid-cols-3 gap-2 mb-4" id="payOptions">
+        <input type="hidden" name="payment_method" id="payMethodInput" value="cash"/>
 
-          <!-- Cash -->
+        <!-- Payment Options: Cash & UPI only -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
           <button type="button" onclick="selectPay('cash',this)"
-            class="pay-btn border-2 border-gray-200 dark:border-dark-600 rounded-2xl p-3 text-center transition-all hover:scale-105">
-            <div class="text-2xl mb-1">💵</div>
-            <div class="font-bold text-xs text-gray-600 dark:text-gray-300">Cash</div>
+            class="pay-btn border-2 border-green-500 bg-green-50 dark:bg-green-950/40 rounded-2xl p-4 text-center transition-all hover:scale-105 active:scale-95">
+            <div class="text-3xl mb-1">💵</div>
+            <div class="font-bold text-sm text-green-700 dark:text-green-300">Cash</div>
+            <div class="text-xs text-gray-400 mt-0.5">Pay at counter</div>
           </button>
-
-          <!-- UPI (opens GPay / PhonePe) -->
           <button type="button" onclick="selectPay('upi',this)"
-            class="pay-btn border-2 border-green-500 bg-green-50 dark:bg-green-950/40 rounded-2xl p-3 text-center transition-all hover:scale-105">
-            <div class="text-2xl mb-1">📱</div>
-            <div class="font-bold text-xs text-green-700 dark:text-green-300">UPI</div>
-          </button>
-
-          <!-- Card -->
-          <button type="button" onclick="selectPay('card',this)"
-            class="pay-btn border-2 border-gray-200 dark:border-dark-600 rounded-2xl p-3 text-center transition-all hover:scale-105">
-            <div class="text-2xl mb-1">💳</div>
-            <div class="font-bold text-xs text-gray-600 dark:text-gray-300">Card</div>
+            class="pay-btn border-2 border-gray-200 dark:border-dark-600 rounded-2xl p-4 text-center transition-all hover:scale-105 active:scale-95">
+            <div class="text-3xl mb-1">📱</div>
+            <div class="font-bold text-sm text-gray-600 dark:text-gray-300">UPI</div>
+            <div class="text-xs text-gray-400 mt-0.5">GPay / PhonePe</div>
           </button>
         </div>
 
-        <!-- UPI Deep Link Panel (shown when UPI selected) -->
-        <div id="upiPanel" class="mb-3 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-2xl p-4">
-          <p class="text-xs font-bold text-green-700 dark:text-green-300 mb-3">
-            📱 Pay via UPI — Opens GPay / PhonePe / Paytm
-          </p>
-          <div class="grid grid-cols-3 gap-2 mb-3">
-            <a id="gpayLink" href="#" target="_blank" onclick="openUPI('gpay')"
-               class="bg-white dark:bg-dark-800 rounded-xl p-2 text-center border border-gray-200 dark:border-dark-600 hover:scale-105 transition cursor-pointer">
-              <div class="text-xl">🟦</div>
-              <div class="text-xs font-bold text-gray-600 dark:text-gray-300 mt-1">GPay</div>
-            </a>
-            <a id="phonepeLink" href="#" target="_blank" onclick="openUPI('phonepe')"
-               class="bg-white dark:bg-dark-800 rounded-xl p-2 text-center border border-gray-200 dark:border-dark-600 hover:scale-105 transition cursor-pointer">
-              <div class="text-xl">🟣</div>
-              <div class="text-xs font-bold text-gray-600 dark:text-gray-300 mt-1">PhonePe</div>
-            </a>
-            <a id="paytmLink" href="#" target="_blank" onclick="openUPI('paytm')"
-               class="bg-white dark:bg-dark-800 rounded-xl p-2 text-center border border-gray-200 dark:border-dark-600 hover:scale-105 transition cursor-pointer">
-              <div class="text-xl">🔵</div>
-              <div class="text-xs font-bold text-gray-600 dark:text-gray-300 mt-1">Paytm</div>
-            </a>
+        <!-- UPI Panel — shows when UPI selected -->
+        <div id="upiPanel" class="hidden mb-4">
+          <div class="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-2xl p-4">
+            <p class="text-xs font-black text-green-700 dark:text-green-300 mb-3 text-center">
+              📱 Scan QR or tap your UPI app to pay
+            </p>
+
+            <!-- UPI QR Code -->
+            <div class="flex justify-center mb-3">
+              <div class="bg-white rounded-2xl p-3 shadow-lg" id="upiQRBox">
+                <canvas id="upiQRCanvas" width="160" height="160"></canvas>
+              </div>
+            </div>
+
+            <!-- UPI ID display -->
+            <div class="bg-white dark:bg-dark-800 rounded-xl px-4 py-3 flex items-center justify-between mb-3 border border-gray-200 dark:border-dark-600">
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">UPI ID</p>
+                <p class="font-black text-sm text-gray-900 dark:text-white" id="upiIdDisplay">{{ config.get('VENDOR_UPI_ID','spoteasy@upi') }}</p>
+              </div>
+              <button onclick="copyUPI()" class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-200 transition">
+                📋 Copy
+              </button>
+            </div>
+
+            <!-- Auto-detect UPI apps -->
+            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 text-center">Tap to open your UPI app:</p>
+            <div id="upiAppsGrid" class="grid grid-cols-4 gap-2 mb-3">
+              <!-- Apps auto-detected by JS -->
+            </div>
+
+            <p class="text-xs text-center text-green-600 dark:text-green-400 font-medium">
+              ✅ Pay first, then tap Checkout below
+            </p>
           </div>
-          <p class="text-xs text-green-600 dark:text-green-400 text-center">
-            ⚠️ Pay first, then click Checkout below.<br/>
-            Amount will be calculated at checkout.
-          </p>
         </div>
 
         <button type="submit"
-          class="w-full font-bold py-3.5 rounded-2xl text-white transition-all hover:scale-[1.02]"
+          class="w-full font-bold py-4 rounded-2xl text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
           style="background:linear-gradient(135deg,#dc2626,#b91c1c);">
           🚪 Checkout & Calculate Bill
         </button>
@@ -237,57 +239,117 @@
 
 {% block scripts %}
 <script>
-// ── Payment Method Selection ────────────────────────────────────────────────
-// Vendor UPI ID — set this to the parking lot owner's UPI ID
-// For now using a placeholder; in production each lot would have its own VPA
-const VENDOR_UPI_ID = 'spoteasy@upi';  // Change to actual UPI ID
-const VENDOR_NAME   = encodeURIComponent('{{ res.slot.lot.name[:20] }}');
-const BOOKING_REF   = 'SE{{ "%05d"|format(res.id) }}';
+// ── UPI & Payment ────────────────────────────────────────────────────────────
+const VENDOR_UPI  = document.getElementById('upiIdDisplay')?.textContent?.trim() || 'spoteasy@upi';
+const VENDOR_NAME = encodeURIComponent('{{ res.slot.lot.name[:20] | replace("'","") }}');
+const BOOKING_REF = 'SE{{ "%05d"|format(res.id) }}';
+const UPI_LINK    = `upi://pay?pa=${VENDOR_UPI}&pn=${VENDOR_NAME}&tn=${encodeURIComponent('SpotEasy '+BOOKING_REF)}&cu=INR`;
+
+// All known UPI apps — auto-detect which are installed
+const UPI_APPS = [
+  { name:'GPay',    icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/64px-Google_Pay_Logo.svg.png', pkg:'com.google.android.apps.nbu.paisa.user', scheme:'gpay' },
+  { name:'PhonePe', icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/64px-PhonePe_Logo.svg.png',    pkg:'com.phonepe.app',                       scheme:'phonepe' },
+  { name:'Paytm',   icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/64px-Paytm_Logo_%28standalone%29.svg.png', pkg:'net.one97.paytm', scheme:'paytm' },
+  { name:'BHIM',    icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/BHIM_logo.svg/64px-BHIM_logo.svg.png',           pkg:'in.org.npci.upiapp',                    scheme:'bhim' },
+];
 
 function selectPay(method, btn) {
   document.getElementById('payMethodInput').value = method;
   document.querySelectorAll('.pay-btn').forEach(b => {
-    b.className = b.className
-      .replace('border-green-500 bg-green-50 dark:bg-green-950/40','border-gray-200 dark:border-dark-600')
-      .replace('text-green-700 dark:text-green-300','text-gray-600 dark:text-gray-300');
+    b.classList.remove('border-green-500','bg-green-50','dark:bg-green-950/40');
+    b.classList.add('border-gray-200','dark:border-dark-600');
+    // Reset text color
+    b.querySelector('.font-bold')?.classList.remove('text-green-700','dark:text-green-300');
+    b.querySelector('.font-bold')?.classList.add('text-gray-600','dark:text-gray-300');
   });
-  btn.className = btn.className
-    .replace('border-gray-200 dark:border-dark-600','border-green-500 bg-green-50 dark:bg-green-950/40')
-    .replace('text-gray-600 dark:text-gray-300','text-green-700 dark:text-green-300');
+  btn.classList.add('border-green-500','bg-green-50');
+  btn.classList.remove('border-gray-200');
 
-  // Show/hide UPI panel
-  const upiPanel = document.getElementById('upiPanel');
-  upiPanel.style.display = method === 'upi' ? 'block' : 'none';
+  const panel = document.getElementById('upiPanel');
+  if (method === 'upi') {
+    panel.classList.remove('hidden');
+    buildUPIApps();
+    generateUPIQR();
+  } else {
+    panel.classList.add('hidden');
+  }
 }
 
-function openUPI(app) {
-  // UPI Deep Link format: upi://pay?pa=VPA&pn=NAME&tn=NOTE&cu=INR
-  // Amount is intentionally left out (0) — cashier confirms exact amount
-  const note = encodeURIComponent(`SpotEasy Parking ${BOOKING_REF}`);
-  const baseUPI = `upi://pay?pa=${VENDOR_UPI_ID}&pn=${VENDOR_NAME}&tn=${note}&cu=INR`;
+function buildUPIApps() {
+  const grid = document.getElementById('upiAppsGrid');
+  if (!grid || grid.children.length > 0) return;
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
 
-  let url;
-  if (app === 'gpay') {
-    // Google Pay intent
-    url = `intent://pay?pa=${VENDOR_UPI_ID}&pn=${VENDOR_NAME}&tn=${note}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
-  } else if (app === 'phonepe') {
-    url = `intent://pay?pa=${VENDOR_UPI_ID}&pn=${VENDOR_NAME}&tn=${note}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end`;
-  } else if (app === 'paytm') {
-    url = `intent://pay?pa=${VENDOR_UPI_ID}&pn=${VENDOR_NAME}&tn=${note}&cu=INR#Intent;scheme=upi;package=net.one97.paytm;end`;
-  } else {
-    url = baseUPI;
-  }
+  UPI_APPS.forEach(app => {
+    let url;
+    if (isAndroid) {
+      url = `intent://pay?pa=${VENDOR_UPI}&pn=${VENDOR_NAME}&tn=${encodeURIComponent('SpotEasy '+BOOKING_REF)}&cu=INR#Intent;scheme=upi;package=${app.pkg};end`;
+    } else if (isMobile) {
+      // iOS — use universal UPI link
+      url = `upi://pay?pa=${VENDOR_UPI}&pn=${VENDOR_NAME}&tn=${encodeURIComponent('SpotEasy '+BOOKING_REF)}&cu=INR`;
+    } else {
+      // Desktop — copy to clipboard
+      url = null;
+    }
 
-  // On mobile: open intent. On desktop: show QR or fallback
-  if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    window.location.href = url;
-  } else {
-    // Desktop — show UPI QR or copy link
-    const upiLink = baseUPI;
-    const msg = `📱 On your phone, open GPay/PhonePe and pay to:\n\n${VENDOR_UPI_ID}\n\nReference: ${BOOKING_REF}\n\nOr copy this UPI link:\n${upiLink}`;
-    alert(msg);
-  }
-  return false;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bg-white dark:bg-dark-800 rounded-xl p-2 text-center border border-gray-200 dark:border-dark-600 hover:scale-110 transition-all active:scale-95';
+    btn.innerHTML = `<img src="${app.icon}" class="w-8 h-8 mx-auto rounded-lg" onerror="this.style.display='none';this.nextSibling.style.fontSize='24px'"/><div class="text-xs font-bold text-gray-600 dark:text-gray-300 mt-1" style="font-size:10px;">${app.name}</div>`;
+    btn.onclick = () => {
+      if (url) {
+        window.location.href = url;
+      } else {
+        // Desktop: copy UPI ID
+        navigator.clipboard?.writeText(VENDOR_UPI).then(() => {
+          btn.style.background = '#dcfce7';
+          setTimeout(() => btn.style.background = '', 1000);
+          showToast(`📋 UPI ID copied! Open ${app.name} and pay to: ${VENDOR_UPI}`);
+        });
+      }
+    };
+    grid.appendChild(btn);
+  });
+
+  // Add "Any UPI" button
+  const anyBtn = document.createElement('button');
+  anyBtn.type = 'button';
+  anyBtn.className = 'bg-green-100 dark:bg-green-900/40 rounded-xl p-2 text-center border border-green-300 dark:border-green-700 hover:scale-110 transition-all active:scale-95';
+  anyBtn.innerHTML = `<div style="font-size:22px;">🔗</div><div class="text-xs font-bold text-green-700 dark:text-green-300 mt-1" style="font-size:10px;">Any App</div>`;
+  anyBtn.onclick = () => { window.location.href = UPI_LINK; };
+  grid.appendChild(anyBtn);
+}
+
+function generateUPIQR() {
+  // Generate QR using Google Charts API (free, no library needed)
+  const canvas = document.getElementById('upiQRCanvas');
+  if (!canvas) return;
+  const img = document.createElement('img');
+  const encoded = encodeURIComponent(UPI_LINK);
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encoded}&bgcolor=ffffff&color=111827&margin=2`;
+  img.width = 160; img.height = 160;
+  img.style.borderRadius = '8px';
+  img.alt = 'UPI QR Code';
+  canvas.parentNode.replaceChild(img, canvas);
+}
+
+function copyUPI() {
+  const id = document.getElementById('upiIdDisplay')?.textContent?.trim();
+  if (!id) return;
+  navigator.clipboard?.writeText(id).then(() => {
+    showToast('📋 UPI ID copied to clipboard!');
+  }).catch(() => {
+    prompt('Copy this UPI ID:', id);
+  });
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:12px 20px;border-radius:14px;font-size:13px;font-weight:600;z-index:9999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.25);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
 // Language toggle

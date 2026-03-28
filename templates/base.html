@@ -5,6 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{% block title %}SpotEasy{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- PWA -->
+<link rel="manifest" href="/static/manifest.json"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="SpotEasy"/>
+<meta name="theme-color" content="#16a34a"/>
+<meta name="description" content="Smart Parking for Every Indian City — Find, Book, Park"/>
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png"/>
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#16a34a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="SpotEasy"/>
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png"/>
+<link rel="apple-touch-icon" sizes="152x152" href="/static/icons/icon-152.png"/>
+<link rel="apple-touch-icon" sizes="144x144" href="/static/icons/icon-144.png"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="application-name" content="SpotEasy"/>
 <script>
 tailwind.config = {
   darkMode: 'class',
@@ -346,6 +367,132 @@ async function enableNotif() {
 }
 </script>
 {% endif %}
+<!-- PWA Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[PWA] SW registered:', reg.scope))
+      .catch(e  => console.log('[PWA] SW error:', e));
+  });
+}
+
+// Install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show install banner after 5 seconds
+  setTimeout(() => {
+    const banner = document.getElementById('installBanner');
+    if (banner) banner.classList.remove('hidden');
+  }, 5000);
+});
+
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(result => {
+    console.log('[PWA] Install:', result.outcome);
+    deferredPrompt = null;
+    document.getElementById('installBanner')?.remove();
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner')?.remove();
+  // Show success toast
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:20px;right:16px;z-index:9999;background:#16a34a;color:white;border-radius:14px;padding:14px 20px;font-weight:700;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,0.2);';
+  t.textContent = '✅ SpotEasy installed on your device!';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+});
+</script>
+
+<!-- PWA Install Banner -->
+<div id="installBanner" class="hidden fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-50 no-print animate-fade-in">
+  <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xl">
+    <div class="flex items-start gap-3">
+      <img src="/static/icons/icon-72.png" class="w-12 h-12 rounded-xl shadow" alt="SpotEasy"/>
+      <div class="flex-1">
+        <p class="font-black text-sm text-gray-900 dark:text-white">Install SpotEasy App</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Add to home screen for faster access — works offline too!</p>
+        <div class="flex gap-2 mt-3">
+          <button onclick="installApp()"
+            class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 rounded-xl transition hover:scale-105">
+            📲 Install App
+          </button>
+          <button onclick="document.getElementById('installBanner').remove()"
+            class="flex-1 border border-gray-200 dark:border-slate-600 text-xs font-semibold py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition text-gray-600 dark:text-gray-300">
+            Later
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% block scripts %}{% endblock %}
+<script>
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[SpotEasy PWA] SW registered'))
+      .catch(e => console.log('[SpotEasy PWA] SW failed:', e));
+  });
+}
+
+// PWA Install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show install banner after 5 seconds
+  setTimeout(() => {
+    const banner = document.getElementById('pwaInstallBanner');
+    if (banner && !localStorage.getItem('pwa_dismissed')) {
+      banner.classList.remove('hidden');
+    }
+  }, 5000);
+});
+
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(r => {
+      if (r.outcome === 'accepted') console.log('[PWA] Installed!');
+      deferredPrompt = null;
+    });
+  }
+  document.getElementById('pwaInstallBanner')?.remove();
+}
+function dismissPWA() {
+  localStorage.setItem('pwa_dismissed', '1');
+  document.getElementById('pwaInstallBanner')?.remove();
+}
+</script>
+
+<!-- PWA Install Banner -->
+<div id="pwaInstallBanner" class="hidden fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-50 no-print animate-fade-up">
+  <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xl">
+    <div class="flex items-center gap-3 mb-3">
+      <img src="/static/icons/icon-72.png" class="w-12 h-12 rounded-xl shadow"/>
+      <div>
+        <p class="font-black text-sm text-gray-900 dark:text-white">Install SpotEasy App</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Add to home screen — works offline!</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="installPWA()" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2.5 rounded-xl transition">
+        📱 Install App
+      </button>
+      <button onclick="dismissPWA()" class="px-4 border border-gray-200 dark:border-slate-600 text-xs font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition text-gray-600 dark:text-gray-300">
+        Later
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

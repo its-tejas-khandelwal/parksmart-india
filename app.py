@@ -68,6 +68,8 @@ app.config['FIREBASE_STORAGE_BUCKET'] = os.environ.get('FIREBASE_STORAGE_BUCKET'
 app.config['FIREBASE_SENDER_ID']      = os.environ.get('FIREBASE_SENDER_ID', '')
 app.config['FIREBASE_APP_ID']         = os.environ.get('FIREBASE_APP_ID', '')
 app.config['FIREBASE_VAPID_KEY']      = os.environ.get('FIREBASE_VAPID_KEY', '')
+# UPI Payment — set your UPI ID in Render environment
+app.config['VENDOR_UPI_ID']           = os.environ.get('VENDOR_UPI_ID', 'spoteasy@upi')
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 280, 'pool_pre_ping': True}
 
 db.init_app(app)
@@ -714,3 +716,33 @@ def send_push_v1(fcm_token, title, body, data=None):
     except Exception as e:
         print(f"[FCM V1] Error: {e}")
         return False
+
+# ── PWA Routes ─────────────────────────────────────────────────────
+from flask import send_from_directory
+
+@app.route('/sw.js')
+def service_worker():
+    return send_from_directory('static', 'sw.js',
+                               mimetype='application/javascript')
+
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory('static', 'manifest.json',
+                               mimetype='application/manifest+json')
+
+@app.route('/offline')
+def offline():
+    return render_template('offline.html')
+
+# ── PWA Routes ─────────────────────────────────────────────────────────────────
+@app.route('/sw.js')
+def service_worker():
+    from flask import send_from_directory, make_response
+    resp = make_response(send_from_directory('static', 'sw.js'))
+    resp.headers['Content-Type'] = 'application/javascript'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
+@app.route('/offline')
+def offline():
+    return render_template('offline.html')
