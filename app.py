@@ -634,6 +634,12 @@ def export_csv(table):
     response.headers['Content-Disposition'] = f'attachment; filename=spoteasy_{table}.csv'
     return response
 
+# ── Favicon ───────────────────────────────────────────────────────────────────
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('static/icons', 'icon-96.png',
+                               mimetype='image/png')
+
 # ── Loading / Splash Page ─────────────────────────────────────────────────────
 @app.route('/loading')
 def loading():
