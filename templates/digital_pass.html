@@ -1,129 +1,211 @@
 {% extends "base.html" %}
 {% block title %}Parking Pass — ParkSmart{% endblock %}
+
 {% block content %}
 <div class="max-w-md mx-auto">
-  <div class="flex gap-2 mb-4">
-    <a href="{{ url_for('customer_dashboard') }}" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+
+  <div class="flex items-center gap-3 mb-5 no-print">
+    <a href="{{ url_for('customer_dashboard') }}"
+       class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
       <i data-lucide="arrow-left" class="w-4 h-4"></i> My Bookings
     </a>
+    <span class="text-gray-300 dark:text-gray-700">|</span>
+    <span class="text-xs text-gray-400">Booking #{{ res.id }}</span>
   </div>
 
-  <!-- Pass Card -->
-  <div id="passCard" class="relative overflow-hidden rounded-3xl shadow-2xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white">
+  <!-- ═══ PASS CARD (this is what prints) ═══ -->
+  <div id="passCard" class="relative overflow-hidden rounded-3xl text-white"
+       style="background:linear-gradient(135deg,#059669 0%,#0d9488 50%,#0891b2 100%);box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+
+    <!-- Top shine effect -->
+    <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:rgba(255,255,255,0.07);border-radius:50%;"></div>
+
     <!-- Header -->
-    <div class="p-6 pb-4">
+    <div class="px-6 pt-6 pb-4">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-2">
-          <i data-lucide="parking-circle" class="w-7 h-7"></i>
-          <span class="font-bold text-xl tracking-tight">ParkSmart</span>
+          <div class="bg-white/20 rounded-xl p-1.5">
+            <i data-lucide="parking-circle" class="w-6 h-6"></i>
+          </div>
+          <span class="font-bold text-lg tracking-tight">ParkSmart India</span>
         </div>
-        <span class="bg-white/20 backdrop-blur text-xs font-bold px-3 py-1 rounded-full uppercase">
-          {% if res.status == 'active' %}🟢 Active{% else %}✅ Completed{% endif %}
+        <span class="text-xs font-bold px-3 py-1.5 rounded-full
+          {% if res.status=='active' %}bg-emerald-400/30 border border-emerald-300/50
+          {% else %}bg-white/20 border border-white/30{% endif %}">
+          {% if res.status=='active' %}🟢 ACTIVE{% else %}✅ COMPLETED{% endif %}
         </span>
       </div>
-      <h2 class="text-2xl font-extrabold leading-tight" id="lotName">{{ res.slot.lot.name }}</h2>
-      <p class="text-white/80 text-sm mt-1" id="lotAddr">{{ res.slot.lot.address }}, {{ res.slot.lot.city }}</p>
+      <h2 class="text-xl font-extrabold leading-tight">{{ res.slot.lot.name }}</h2>
+      <p class="text-white/75 text-sm mt-1">{{ res.slot.lot.address }}, {{ res.slot.lot.city }}</p>
     </div>
 
-    <!-- Perforated separator -->
-    <div class="flex items-center mx-6 my-2">
-      <div class="flex-1 border-t-2 border-dashed border-white/40"></div>
-      <div class="w-4 h-4 bg-gray-50 dark:bg-slate-950 rounded-full mx-2 shrink-0"></div>
-      <div class="flex-1 border-t-2 border-dashed border-white/40"></div>
+    <!-- Perforation line -->
+    <div class="relative mx-0 my-1 flex items-center" style="height:24px;">
+      <div class="w-5 h-5 rounded-full bg-gray-50 dark:bg-slate-950 absolute -left-2.5"></div>
+      <div class="flex-1 border-t-2 border-dashed border-white/30 mx-4"></div>
+      <div class="w-5 h-5 rounded-full bg-gray-50 dark:bg-slate-950 absolute -right-2.5"></div>
     </div>
 
-    <!-- Details -->
-    <div class="px-6 pb-4 grid grid-cols-3 gap-4 text-center">
-      <div>
-        <div class="text-white/70 text-xs mb-1" id="lbl1">Slot</div>
+    <!-- Slot details grid -->
+    <div class="px-6 pb-4 grid grid-cols-3 gap-3 text-center">
+      <div class="bg-white/10 rounded-2xl py-3 px-2">
+        <div class="text-white/60 text-xs mb-1" id="lbl1">Slot</div>
         <div class="font-bold text-xl">{{ res.slot.label }}</div>
+        <div class="text-white/60 text-xs">{{ '🛵 2W' if res.slot.slot_type=='2w' else '🚗 4W' }}</div>
       </div>
-      <div>
-        <div class="text-white/70 text-xs mb-1" id="lbl2">Vehicle</div>
-        <div class="font-bold text-lg">{{ res.vehicle_no }}</div>
+      <div class="bg-white/10 rounded-2xl py-3 px-2">
+        <div class="text-white/60 text-xs mb-1" id="lbl2">Vehicle</div>
+        <div class="font-bold text-base">{{ res.vehicle_no }}</div>
+        <div class="text-white/60 text-xs">{{ '2-Wheeler' if res.vehicle_type=='2w' else '4-Wheeler' }}</div>
       </div>
-      <div>
-        <div class="text-white/70 text-xs mb-1" id="lbl3">Type</div>
-        <div class="font-bold text-lg">{% if res.vehicle_type=='2w' %}🛵 2W{% else %}🚗 4W{% endif %}</div>
+      <div class="bg-white/10 rounded-2xl py-3 px-2">
+        <div class="text-white/60 text-xs mb-1" id="lbl3">Rate</div>
+        {% if res.vehicle_type == '2w' %}
+        <div class="font-bold text-base">₹{{ res.slot.lot.rate_2w }}</div>
+        {% else %}
+        <div class="font-bold text-base">₹{{ res.slot.lot.rate_4w }}</div>
+        {% endif %}
+        <div class="text-white/60 text-xs">per hour</div>
       </div>
     </div>
 
-    <div class="px-6 pb-4 grid grid-cols-2 gap-4">
-      <div class="bg-white/10 rounded-2xl p-3">
-        <div class="text-white/70 text-xs mb-1" id="lbl4">Entry Time</div>
+    <!-- Time & Amount -->
+    <div class="px-6 pb-4 grid grid-cols-2 gap-3">
+      <div class="bg-white/10 rounded-2xl p-4">
+        <div class="text-white/60 text-xs mb-1" id="lbl4">Entry Time</div>
         <div class="font-semibold text-sm">{{ res.entry_time.strftime('%d %b %Y') }}</div>
-        <div class="font-bold">{{ res.entry_time.strftime('%I:%M %p') }}</div>
+        <div class="font-bold text-lg">{{ res.entry_time.strftime('%I:%M %p') }}</div>
+        <div class="text-white/50 text-xs">IST</div>
       </div>
-      <div class="bg-white/10 rounded-2xl p-3">
-        {% if res.exit_time %}
-        <div class="text-white/70 text-xs mb-1" id="lbl5">Amount Paid</div>
-        <div class="font-bold text-2xl">₹{{ res.amount_paid }}</div>
-        <div class="text-xs text-white/70">incl. taxes</div>
+      <div class="bg-white/10 rounded-2xl p-4">
+        {% if res.exit_time and res.status == 'completed' %}
+        <div class="text-white/60 text-xs mb-1" id="lbl5">Amount Paid</div>
+        <div class="font-bold text-3xl">₹{{ res.amount_paid }}</div>
+        {% if res.amount_paid == 0 %}
+        <div class="text-emerald-300 text-xs font-semibold mt-1">Grace Period — FREE!</div>
         {% else %}
-        <div class="text-white/70 text-xs mb-1">Rate</div>
-        <div class="font-semibold text-sm">🛵 ₹{{ res.slot.lot.rate_2w }}/hr</div>
-        <div class="font-semibold text-sm">🚗 ₹{{ res.slot.lot.rate_4w }}/hr</div>
+        <div class="text-white/50 text-xs mt-1">incl. all charges</div>
+        {% endif %}
+        {% else %}
+        <div class="text-white/60 text-xs mb-1">Grace Period</div>
+        <div class="font-bold text-lg">FREE</div>
+        <div class="text-white/60 text-xs mt-1">if exit ≤ 15 mins</div>
         {% endif %}
       </div>
     </div>
 
     <!-- QR Code -->
-    {% if qr_b64 %}
-    <div class="flex flex-col items-center pb-6">
-      <div class="bg-white rounded-2xl p-3 mb-2">
-        <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" class="w-36 h-36"/>
+    <div class="flex flex-col items-center px-6 pb-6">
+      <div class="bg-white rounded-2xl p-3 shadow-lg mb-2">
+        {% if qr_b64 %}
+          <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" class="w-40 h-40" style="image-rendering:pixelated;"/>
+        {% else %}
+          <!-- Fallback: styled QR placeholder with token -->
+          <div class="w-40 h-40 flex flex-col items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+            <i data-lucide="qr-code" class="w-12 h-12 text-gray-400 mb-2"></i>
+            <p class="text-xs text-gray-500 text-center px-2 break-all font-mono">{{ res.qr_token[:16] }}...</p>
+          </div>
+        {% endif %}
       </div>
-      <p class="text-white/70 text-xs" id="lblQR">Scan at entry/exit gate</p>
+      <p class="text-white/60 text-xs" id="lblQR">Scan at entry / exit gate</p>
+      <p class="text-white/40 text-xs mt-1 font-mono">{{ res.qr_token[:20] }}...</p>
     </div>
-    {% endif %}
   </div>
+  <!-- ═══ END PASS CARD ═══ -->
 
-  <!-- Action Buttons -->
-  <div class="mt-4 space-y-3">
+  <!-- Action Buttons (hidden on print) -->
+  <div class="mt-5 space-y-3 no-print">
+
     <!-- Language Toggle -->
     <div class="flex gap-2">
-      <button onclick="setLang('en')" id="btnEN" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-white hover:bg-slate-700 transition">🇬🇧 English</button>
-      <button onclick="setLang('hi')" id="btnHI" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition">🇮🇳 हिन्दी</button>
+      <button onclick="setLang('en')" id="btnEN"
+        class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 text-white transition">
+        🇬🇧 English
+      </button>
+      <button onclick="setLang('hi')" id="btnHI"
+        class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
+        🇮🇳 हिन्दी
+      </button>
     </div>
 
-    <!-- WhatsApp Share -->
+    <!-- WhatsApp -->
     <a href="{{ wa_url }}" target="_blank"
-       class="flex items-center justify-center gap-3 bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-2xl transition text-base">
-      <svg class="w-5 h-5 fill-white" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+       class="flex items-center justify-center gap-3 text-white font-bold py-4 rounded-2xl transition text-base"
+       style="background:linear-gradient(135deg,#25D366,#128C7E);">
+      <svg class="w-6 h-6 fill-white" viewBox="0 0 24 24">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      </svg>
       Share on WhatsApp
     </a>
 
     {% if res.status == 'active' %}
     <form method="POST" action="{{ url_for('checkout', rid=res.id) }}">
-      <button class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-2xl transition text-base">
-        Checkout & Pay
+      <button class="w-full font-bold py-4 rounded-2xl transition text-base text-white"
+              style="background:linear-gradient(135deg,#dc2626,#b91c1c);">
+        🚪 Checkout &amp; Calculate Bill
       </button>
     </form>
     {% endif %}
 
-    <button onclick="window.print()" class="w-full border-2 border-gray-300 dark:border-slate-700 font-semibold py-3 rounded-2xl hover:bg-gray-50 dark:hover:bg-slate-800 transition text-sm">
+    <!-- Print -->
+    <button onclick="printPass()"
+      class="w-full border-2 border-gray-200 dark:border-slate-700 font-semibold py-3.5 rounded-2xl hover:bg-gray-50 dark:hover:bg-slate-800 transition text-sm text-gray-700 dark:text-gray-300">
       🖨️ Print / Save as PDF
     </button>
   </div>
+
 </div>
+{% endblock %}
 
 {% block scripts %}
 <script>
-const translations = {
-  en: { lbl1:'Slot', lbl2:'Vehicle', lbl3:'Type', lbl4:'Entry Time', lbl5:'Amount Paid', lblQR:'Scan at entry/exit gate' },
-  hi: { lbl1:'स्लॉट', lbl2:'वाहन', lbl3:'प्रकार', lbl4:'प्रवेश समय', lbl5:'भुगतान राशि', lblQR:'प्रवेश/निकास पर स्कैन करें' }
+// ── Language Toggle ──────────────────────────────────────────────────────────
+const T = {
+  en: {
+    lbl1:'Slot', lbl2:'Vehicle', lbl3:'Rate',
+    lbl4:'Entry Time', lbl5:'Amount Paid',
+    lblQR:'Scan at entry / exit gate'
+  },
+  hi: {
+    lbl1:'स्लॉट', lbl2:'वाहन', lbl3:'दर',
+    lbl4:'प्रवेश समय', lbl5:'भुगतान राशि',
+    lblQR:'प्रवेश/निकास पर स्कैन करें'
+  }
 };
 function setLang(lang) {
-  const t = translations[lang];
-  Object.keys(t).forEach(k => {
+  Object.keys(T[lang]).forEach(k => {
     const el = document.getElementById(k);
-    if (el) el.textContent = t[k];
+    if(el) el.textContent = T[lang][k];
   });
-  document.getElementById('btnEN').classList.toggle('bg-slate-800', lang==='en');
-  document.getElementById('btnEN').classList.toggle('text-white', lang==='en');
-  document.getElementById('btnHI').classList.toggle('bg-slate-800', lang==='hi');
-  document.getElementById('btnHI').classList.toggle('text-white', lang==='hi');
+  const btnEN = document.getElementById('btnEN');
+  const btnHI = document.getElementById('btnHI');
+  if(lang === 'en') {
+    btnEN.className = btnEN.className.replace('border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800', '');
+    btnEN.style.cssText = 'background:#1e293b;color:white;';
+    btnHI.style.cssText = '';
+  } else {
+    btnHI.style.cssText = 'background:#1e293b;color:white;';
+    btnEN.style.cssText = '';
+  }
+}
+
+// ── Print only the pass card ─────────────────────────────────────────────────
+function printPass() {
+  const card = document.getElementById('passCard');
+  const win  = window.open('', '_blank', 'width=500,height=700');
+  win.document.write(`
+    <!DOCTYPE html><html><head>
+    <title>ParkSmart Pass #{{ res.id }}</title>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,sans-serif;}
+      body{background:#f9fafb;display:flex;justify-content:center;padding:20px;}
+    </style>
+    </head><body>
+    ${card.outerHTML}
+    <script>window.onload=function(){window.print();window.close();}<\/script>
+    </body></html>
+  `);
+  win.document.close();
 }
 </script>
-{% endblock %}
 {% endblock %}

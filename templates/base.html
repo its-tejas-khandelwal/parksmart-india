@@ -1,60 +1,87 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth" id="htmlRoot">
+<html lang="en" id="htmlRoot">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{% block title %}ParkSmart India{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          emerald: { 400:'#34d399', 500:'#10b981', 600:'#059669', 700:'#047857' },
+          navy:    { 900:'#0f172a', 800:'#1e293b', 700:'#334155' }
+        }
+      }
+    }
+  }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
-  body{font-family:'Inter',sans-serif;}
-  .glass{background:rgba(255,255,255,0.08);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.15);}
-  .glass-light{background:rgba(255,255,255,0.7);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.4);}
+  *{font-family:'Inter',sans-serif;}
+  .glass{background:rgba(255,255,255,0.08);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.15);}
+  .glass-light{background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(0,0,0,0.08);}
+  .dark .glass-light{background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);}
+  .bento{border-radius:1.25rem;padding:1.5rem;transition:box-shadow 0.2s;}
   .slot-available{background:rgba(16,185,129,0.15);border:2px solid #10b981;color:#065f46;}
   .slot-occupied{background:rgba(239,68,68,0.12);border:2px solid #ef4444;color:#991b1b;}
-  .dark .slot-available{color:#6ee7b7;}
-  .dark .slot-occupied{color:#fca5a5;}
-  .bento{border-radius:1.25rem;padding:1.5rem;box-shadow:0 4px 24px rgba(0,0,0,0.07);}
-  .dark .bento{box-shadow:0 4px 24px rgba(0,0,0,0.3);}
-  @keyframes pulse-green{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4);}50%{box-shadow:0 0 0 8px rgba(16,185,129,0);}}
+  .dark .slot-available{background:rgba(52,211,153,0.15);border-color:#34d399;color:#6ee7b7;}
+  .dark .slot-occupied{background:rgba(239,68,68,0.2);border-color:#f87171;color:#fca5a5;}
+  @keyframes pulse-green{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.5);}50%{box-shadow:0 0 0 8px rgba(16,185,129,0);}}
   .pulse-available{animation:pulse-green 2s infinite;}
+  @media print{
+    nav,footer,.no-print{display:none!important;}
+    body{background:white!important;color:black!important;}
+    .print-only{display:block!important;}
+    #passCard{box-shadow:none!important;max-width:400px;margin:0 auto;}
+  }
 </style>
 <script>
   (function(){
-    const t=localStorage.getItem('ps_theme')||'light';
-    if(t==='dark')document.documentElement.classList.add('dark');
+    const t = localStorage.getItem('ps_theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if(t === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   })();
 </script>
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
 
 <!-- Navbar -->
-<nav class="sticky top-0 z-50 glass-light dark:glass border-b border-gray-200 dark:border-slate-800">
+<nav class="sticky top-0 z-50 glass-light shadow-sm">
   <div class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
     <a href="/" class="flex items-center gap-2 font-bold text-xl text-emerald-600 dark:text-emerald-400">
-      <i data-lucide="parking-circle" class="w-7 h-7"></i> ParkSmart
+      <i data-lucide="parking-circle" class="w-7 h-7"></i>
+      <span>ParkSmart <span class="text-gray-400 dark:text-gray-500 font-normal text-sm">India</span></span>
     </a>
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3">
       {% if current_user.is_authenticated %}
-        <span class="hidden sm:inline text-sm text-gray-500 dark:text-gray-400">{{ current_user.name }}</span>
+        <span class="hidden sm:inline text-sm text-gray-500 dark:text-gray-400 font-medium">
+          {{ current_user.name }}
+        </span>
         {% if current_user.role == 'customer' %}
-          <a href="{{ url_for('customer_dashboard') }}" class="text-sm font-medium hover:text-emerald-600">Dashboard</a>
-          <a href="{{ url_for('lots_list') }}" class="text-sm font-medium hover:text-emerald-600">Find Parking</a>
+          <a href="{{ url_for('customer_dashboard') }}" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400">My Bookings</a>
+          <a href="{{ url_for('lots_list') }}" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400">Find Parking</a>
         {% elif current_user.role == 'vendor' %}
-          <a href="{{ url_for('vendor_dashboard') }}" class="text-sm font-medium hover:text-emerald-600">Dashboard</a>
+          <a href="{{ url_for('vendor_dashboard') }}" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400">Dashboard</a>
         {% elif current_user.role == 'admin' %}
-          <a href="{{ url_for('admin_dashboard') }}" class="text-sm font-medium hover:text-emerald-600">Admin</a>
+          <a href="{{ url_for('admin_dashboard') }}" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400">Admin Panel</a>
         {% endif %}
-        <a href="{{ url_for('logout') }}" class="text-sm text-red-500 hover:text-red-700">Logout</a>
+        <a href="{{ url_for('logout') }}" class="text-sm font-medium text-red-500 hover:text-red-700">Logout</a>
       {% else %}
-        <a href="{{ url_for('login') }}" class="text-sm font-medium hover:text-emerald-600">Login</a>
-        <a href="{{ url_for('register') }}" class="bg-emerald-600 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-emerald-700">Register</a>
+        <a href="{{ url_for('login') }}" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-emerald-600">Login</a>
+        <a href="{{ url_for('register') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">Register</a>
       {% endif %}
-      <button onclick="toggleTheme()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800" aria-label="Toggle theme">
-        <i data-lucide="sun" class="w-5 h-5 dark:hidden"></i>
-        <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+      <!-- Theme Toggle -->
+      <button onclick="toggleTheme()" id="themeBtn"
+        class="p-2 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+        aria-label="Toggle dark/light mode">
+        <i data-lucide="sun" class="w-4 h-4 text-amber-500 dark:hidden"></i>
+        <i data-lucide="moon" class="w-4 h-4 text-indigo-400 hidden dark:block"></i>
       </button>
     </div>
   </div>
@@ -63,36 +90,36 @@
 <!-- Flash Messages -->
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-    <div class="max-w-7xl mx-auto px-4 mt-4 space-y-2">
-      {% for category, message in messages %}
-        <div class="flex items-center gap-3 p-3 rounded-xl text-sm font-medium
-          {% if category == 'danger' %}bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300
-          {% elif category == 'success' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300
-          {% elif category == 'warning' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300
-          {% else %}bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300{% endif %}">
-          <i data-lucide="{% if category=='danger' %}alert-circle{% elif category=='success' %}check-circle{% else %}info{% endif %}" class="w-4 h-4 shrink-0"></i>
-          {{ message }}
-        </div>
-      {% endfor %}
+  <div class="max-w-7xl mx-auto px-4 mt-4 space-y-2 no-print">
+    {% for category, message in messages %}
+    <div class="flex items-center gap-3 p-3 rounded-xl text-sm font-medium
+      {% if category=='danger' %}bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800
+      {% elif category=='success' %}bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800
+      {% elif category=='warning' %}bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800
+      {% else %}bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800{% endif %}">
+      <i data-lucide="{% if category=='danger' %}alert-circle{% elif category=='success' %}check-circle{% else %}info{% endif %}" class="w-4 h-4 shrink-0"></i>
+      {{ message }}
     </div>
+    {% endfor %}
+  </div>
   {% endif %}
 {% endwith %}
 
-<!-- Main content -->
 <main class="max-w-7xl mx-auto px-4 py-8">
   {% block content %}{% endblock %}
 </main>
 
-<footer class="text-center text-xs text-gray-400 dark:text-gray-600 pb-6 mt-12">
-  ParkSmart India &copy; 2025 &mdash; Built with ❤️ for India
+<footer class="no-print text-center text-xs text-gray-400 dark:text-gray-600 pb-8 mt-12 border-t border-gray-100 dark:border-slate-800 pt-6">
+  🅿️ ParkSmart India &copy; 2025 &nbsp;·&nbsp; Made with ❤️ for India &nbsp;·&nbsp;
+  <span class="text-emerald-500">{{ now_ist.strftime('%I:%M %p IST') }}</span>
 </footer>
 
 <script>
   lucide.createIcons();
   function toggleTheme(){
-    const html=document.documentElement;
-    const isDark=html.classList.toggle('dark');
-    localStorage.setItem('ps_theme',isDark?'dark':'light');
+    const html = document.documentElement;
+    const isDark = html.classList.toggle('dark');
+    localStorage.setItem('ps_theme', isDark ? 'dark' : 'light');
     lucide.createIcons();
   }
 </script>

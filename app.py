@@ -1,6 +1,6 @@
-import os, base64, io, json
+import os, base64, io
 from decimal import Decimal, InvalidOperation
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -8,33 +8,39 @@ from models import db, User, ParkingLot, ParkingSlot, Reservation
 
 load_dotenv()
 
-# ── Database URL fix ──────────────────────────────────────────────────────────
+# IST timezone
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def now_ist():
+    return datetime.now(IST).replace(tzinfo=None)
+
+def to_ist(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(IST).replace(tzinfo=None)
+
+# ── Database URL ───────────────────────────────────────────────────────────────
 def get_db_url():
     url = os.environ.get('DATABASE_URL', '').strip()
     if not url:
         print("[DB] No DATABASE_URL — using SQLite (local dev)")
         return 'sqlite:///parksmart.db'
-    # Render/Heroku give postgres:// — SQLAlchemy needs postgresql://
     if url.startswith('postgres://'):
         url = 'postgresql://' + url[len('postgres://'):]
-    # Supabase & Neon need sslmode=require for psycopg2
     if 'sslmode' not in url:
         sep = '&' if '?' in url else '?'
         url = url + sep + 'sslmode=require'
     print("[DB] Using PostgreSQL")
     return url
 
-# ── App Factory ───────────────────────────────────────────────────────────────
+# ── App ────────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
-
-db_url = get_db_url()
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+app.config['SQLALCHEMY_DATABASE_URI'] = get_db_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_recycle': 280,
-    'pool_pre_ping': True,
-}
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 280, 'pool_pre_ping': True}
 
 db.init_app(app)
 
@@ -62,10 +68,9 @@ with app.app_context():
             print(f"[DB] Admin created: {admin_email}")
         print("[DB] Database ready ✅")
     except Exception as e:
-        print(f"[DB] WARNING: Could not connect to DB on startup: {e}")
-        print("[DB] App will still start — check DATABASE_URL in environment")
+        print(f"[DB] WARNING: {e}")
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────────────
 def _safe_decimal(val, default=0):
     try:
         return Decimal(str(val).replace(',', '').strip())
@@ -83,31 +88,60 @@ def calculate_bill(entry_time, exit_time, vehicle_type, rate_2w, rate_4w):
 def generate_qr_base64(token):
     try:
         import qrcode
-        img = qrcode.make(token)
+        from qrcode.image.pure import PyPNGImage
+        qr = qrcode.QRCode(version=1, box_size=8, border=2)
+        qr.add_data(token)
+        qr.make(fit=True)
+        img = qr.make_image(image_factory=PyPNGImage)
         buf = io.BytesIO()
-        img.save(buf, format='PNG')
-        return base64.b64encode(buf.getvalue()).decode()
+        img.save(buf)
+        buf.seek(0)
+        return base64.b64encode(buf.read()).decode()
     except Exception as e:
-        print(f"[QR] Error: {e}")
-        return ''
+        print(f"[QR] PyPNG failed: {e}, trying PIL...")
+        try:
+            import qrcode as qr2
+            img2 = qr2.make(token)
+            buf2 = io.BytesIO()
+            img2.save(buf2, format='PNG')
+            buf2.seek(0)
+            return base64.b64encode(buf2.read()).decode()
+        except Exception as e2:
+            print(f"[QR] All methods failed: {e2}")
+            return ''
 
 def build_whatsapp_url(res):
-    lot = res.slot.lot
+    lot      = res.slot.lot
+    ist_time = to_ist(res.entry_time)
+    duration_hint = "Grace period: FREE if exit within 15 mins! ⏰"
+    rate = f"₹{lot.rate_2w}/hr (🛵)" if res.vehicle_type == '2w' else f"₹{lot.rate_4w}/hr (🚗)"
     msg = (
-        f"Namaste! 🙏%0A"
-        f"Your parking at *{lot.name}* is confirmed.%0A"
-        f"Slot: *{res.slot.label}* | Vehicle: {res.vehicle_no}%0A"
-        f"Entry: {res.entry_time.strftime('%d %b %Y, %I:%M %p')}%0A"
-        f"ParkSmart India 🚗"
+        f"🅿️ *ParkSmart India* — Booking Confirmed!%0A"
+        f"━━━━━━━━━━━━━━━━━━━━%0A"
+        f"🏢 *Lot:* {lot.name}%0A"
+        f"📍 *Address:* {lot.address}, {lot.city}%0A"
+        f"🔢 *Slot:* {res.slot.label}%0A"
+        f"🚘 *Vehicle:* {res.vehicle_no} ({'2-Wheeler' if res.vehicle_type=='2w' else '4-Wheeler'})%0A"
+        f"⏱️ *Entry:* {ist_time.strftime('%d %b %Y, %I:%M %p')} IST%0A"
+        f"💰 *Rate:* {rate}%0A"
+        f"━━━━━━━━━━━━━━━━━━━━%0A"
+        f"{duration_hint}%0A"
+        f"Show QR code at entry/exit gate.%0A"
+        f"🙏 _Powered by ParkSmart India_"
     )
     return f"https://wa.me/?text={msg}"
 
 def redirect_by_role():
-    if current_user.role == 'admin':   return redirect(url_for('admin_dashboard'))
-    if current_user.role == 'vendor':  return redirect(url_for('vendor_dashboard'))
+    if current_user.role == 'admin':  return redirect(url_for('admin_dashboard'))
+    if current_user.role == 'vendor': return redirect(url_for('vendor_dashboard'))
     return redirect(url_for('customer_dashboard'))
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+# Pass IST converter to all templates
+@app.context_processor
+def inject_helpers():
+    return {'to_ist': to_ist, 'now_ist': now_ist()}
+
+# ── Auth ───────────────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -137,7 +171,6 @@ def register():
         pw    = request.form.get('password', '')
         role  = request.form.get('role', 'customer')
         phone = request.form.get('phone', '').strip()
-
         if not name or not email or not pw:
             flash('Name, email and password are required.', 'danger')
             return render_template('register.html')
@@ -146,13 +179,11 @@ def register():
             return render_template('register.html')
         if role not in ('customer', 'vendor'):
             role = 'customer'
-
         user = User(name=name, email=email, role=role, phone=phone,
                     is_approved=(role == 'customer'))
         user.set_password(pw)
         db.session.add(user)
         db.session.commit()
-
         if role == 'vendor':
             flash('Vendor account created! Awaiting admin approval.', 'info')
             return redirect(url_for('login'))
@@ -166,12 +197,11 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-# ── Admin ─────────────────────────────────────────────────────────────────────
+# ── Admin ──────────────────────────────────────────────────────────────────────
 @app.route('/admin/dashboard')
 @login_required
 def admin_dashboard():
-    if current_user.role != 'admin':
-        return redirect(url_for('index'))
+    if current_user.role != 'admin': return redirect(url_for('index'))
     vendors      = User.query.filter_by(role='vendor').all()
     customers    = User.query.filter_by(role='customer').all()
     lots         = ParkingLot.query.all()
@@ -183,9 +213,7 @@ def admin_dashboard():
 @app.route('/admin/approve_vendor/<int:uid>', methods=['POST'])
 @login_required
 def approve_vendor(uid):
-    if current_user.role != 'admin':
-        flash('Forbidden.', 'danger')
-        return redirect(url_for('index'))
+    if current_user.role != 'admin': return redirect(url_for('index'))
     user = db.session.get(User, uid)
     if user and user.role == 'vendor':
         user.is_approved = True
@@ -196,9 +224,7 @@ def approve_vendor(uid):
 @app.route('/admin/approve_lot/<int:lid>', methods=['POST'])
 @login_required
 def approve_lot(lid):
-    if current_user.role != 'admin':
-        flash('Forbidden.', 'danger')
-        return redirect(url_for('index'))
+    if current_user.role != 'admin': return redirect(url_for('index'))
     lot = db.session.get(ParkingLot, lid)
     if lot:
         lot.is_active = True
@@ -209,27 +235,24 @@ def approve_lot(lid):
 @app.route('/admin/db')
 @login_required
 def admin_db_view():
-    if current_user.role != 'admin':
-        return redirect(url_for('index'))
+    if current_user.role != 'admin': return redirect(url_for('index'))
     users        = User.query.all()
     lots         = ParkingLot.query.all()
     reservations = Reservation.query.order_by(Reservation.created_at.desc()).all()
     return render_template('db_view.html', users=users, lots=lots, reservations=reservations)
 
-# ── Vendor ────────────────────────────────────────────────────────────────────
+# ── Vendor ─────────────────────────────────────────────────────────────────────
 @app.route('/vendor/dashboard')
 @login_required
 def vendor_dashboard():
-    if current_user.role != 'vendor':
-        return redirect(url_for('index'))
+    if current_user.role != 'vendor': return redirect(url_for('index'))
     lots = ParkingLot.query.filter_by(owner_id=current_user.id).all()
     return render_template('dashboard_vendor.html', lots=lots)
 
 @app.route('/vendor/add_lot', methods=['GET', 'POST'])
 @login_required
 def add_lot():
-    if current_user.role != 'vendor':
-        return redirect(url_for('index'))
+    if current_user.role != 'vendor': return redirect(url_for('index'))
     if request.method == 'POST':
         try:
             name        = request.form.get('name', '').strip()
@@ -237,30 +260,30 @@ def add_lot():
             city        = request.form.get('city', '').strip()
             lat_str     = request.form.get('latitude', '').strip()
             lng_str     = request.form.get('longitude', '').strip()
-            slots_str   = request.form.get('total_slots', '').strip()
+            slots_2w    = request.form.get('slots_2w', '0').strip()
+            slots_4w    = request.form.get('slots_4w', '0').strip()
             rate_2w_str = request.form.get('rate_2w', '').strip()
             rate_4w_str = request.form.get('rate_4w', '').strip()
 
-            # Validate all fields present
-            if not all([name, address, city, lat_str, lng_str, slots_str, rate_2w_str, rate_4w_str]):
+            if not all([name, address, city, lat_str, lng_str, rate_2w_str, rate_4w_str]):
                 flash('All fields are required.', 'danger')
                 return render_template('add_lot.html')
-
-            # Parse numbers
             try:
-                lat   = float(lat_str)
-                lng   = float(lng_str)
-                total = int(slots_str)
+                lat    = float(lat_str)
+                lng    = float(lng_str)
+                n_2w   = int(slots_2w) if slots_2w else 0
+                n_4w   = int(slots_4w) if slots_4w else 0
             except ValueError:
-                flash('Latitude, Longitude must be decimals and Slots must be a whole number.', 'danger')
+                flash('Latitude, Longitude and slot counts must be valid numbers.', 'danger')
+                return render_template('add_lot.html')
+
+            total = n_2w + n_4w
+            if total < 1:
+                flash('Total slots must be at least 1.', 'danger')
                 return render_template('add_lot.html')
 
             rate_2w = _safe_decimal(rate_2w_str)
             rate_4w = _safe_decimal(rate_4w_str)
-
-            if total < 1 or total > 500:
-                flash('Slot count must be between 1 and 500.', 'danger')
-                return render_template('add_lot.html')
             if rate_2w <= 0 or rate_4w <= 0:
                 flash('Rates must be greater than zero.', 'danger')
                 return render_template('add_lot.html')
@@ -271,30 +294,26 @@ def add_lot():
                 total_slots=total, rate_2w=rate_2w, rate_4w=rate_4w, is_active=False
             )
             db.session.add(lot)
-            db.session.flush()  # get lot.id without full commit
+            db.session.flush()
 
-            for i in range(1, total + 1):
-                stype = '2w' if i <= total // 2 else '4w'
-                db.session.add(ParkingSlot(
-                    lot_id=lot.id, label=f'S{i:03d}', status='available', slot_type=stype
-                ))
+            for i in range(1, n_2w + 1):
+                db.session.add(ParkingSlot(lot_id=lot.id, label=f'2W-{i:03d}', status='available', slot_type='2w'))
+            for i in range(1, n_4w + 1):
+                db.session.add(ParkingSlot(lot_id=lot.id, label=f'4W-{i:03d}', status='available', slot_type='4w'))
 
             db.session.commit()
             flash(f'Lot "{name}" added! Awaiting admin approval.', 'success')
             return redirect(url_for('vendor_dashboard'))
-
         except Exception as e:
             db.session.rollback()
             flash(f'Server error: {str(e)}', 'danger')
             return render_template('add_lot.html')
-
     return render_template('add_lot.html')
 
 @app.route('/vendor/lot/<int:lid>')
 @login_required
 def vendor_lot_grid(lid):
-    if current_user.role not in ('vendor', 'admin'):
-        return redirect(url_for('index'))
+    if current_user.role not in ('vendor', 'admin'): return redirect(url_for('index'))
     lot = db.session.get(ParkingLot, lid)
     if not lot or (current_user.role == 'vendor' and lot.owner_id != current_user.id):
         flash('Lot not found.', 'danger')
@@ -313,28 +332,26 @@ def toggle_slot(sid):
     db.session.commit()
     return jsonify({'id': slot.id, 'status': slot.status})
 
-# ── Live Grid API ─────────────────────────────────────────────────────────────
 @app.route('/api/lot/<int:lid>/slots')
 @login_required
 def api_lot_slots(lid):
     lot = db.session.get(ParkingLot, lid)
-    if not lot:
-        return jsonify({'error': 'Not found'}), 404
+    if not lot: return jsonify({'error': 'Not found'}), 404
     return jsonify({
         'slots':     [s.to_dict() for s in lot.slots],
         'available': lot.available_count,
         'occupied':  lot.occupied_count,
         'total':     lot.total_slots,
+        'avail_2w':  sum(1 for s in lot.slots if s.slot_type=='2w' and s.status=='available'),
+        'avail_4w':  sum(1 for s in lot.slots if s.slot_type=='4w' and s.status=='available'),
     })
 
-# ── Customer ──────────────────────────────────────────────────────────────────
+# ── Customer ───────────────────────────────────────────────────────────────────
 @app.route('/customer/dashboard')
 @login_required
 def customer_dashboard():
-    if current_user.role != 'customer':
-        return redirect(url_for('index'))
-    reservations = (Reservation.query
-                    .filter_by(customer_id=current_user.id)
+    if current_user.role != 'customer': return redirect(url_for('index'))
+    reservations = (Reservation.query.filter_by(customer_id=current_user.id)
                     .order_by(Reservation.created_at.desc()).all())
     return render_template('dashboard_customer.html', reservations=reservations)
 
@@ -361,26 +378,23 @@ def book_slot(lid):
         slot_id      = request.form.get('slot_id', '').strip()
         vehicle_no   = request.form.get('vehicle_no', '').strip().upper()
         vehicle_type = request.form.get('vehicle_type', '4w')
-
         if not slot_id or not vehicle_no:
             flash('Please select a slot and enter your vehicle number.', 'danger')
             return render_template('book_slot.html', lot=lot, slots=available_slots)
-
         slot = db.session.get(ParkingSlot, int(slot_id))
         if not slot or slot.status != 'available':
-            flash('That slot is no longer available. Please choose another.', 'warning')
+            flash('Slot no longer available. Please choose another.', 'warning')
             return redirect(url_for('book_slot', lid=lid))
-
         slot.status = 'occupied'
         res = Reservation(
             customer_id=current_user.id, slot_id=slot.id,
-            vehicle_no=vehicle_no, vehicle_type=vehicle_type
+            vehicle_no=vehicle_no, vehicle_type=vehicle_type,
+            entry_time=now_ist()
         )
         db.session.add(res)
         db.session.commit()
         flash('Booking confirmed! 🎉', 'success')
         return redirect(url_for('digital_pass', rid=res.id))
-
     return render_template('book_slot.html', lot=lot, slots=available_slots)
 
 @app.route('/reservation/<int:rid>/pass')
@@ -404,45 +418,35 @@ def checkout(rid):
     if current_user.role == 'customer' and res.customer_id != current_user.id:
         flash('Not authorised.', 'danger')
         return redirect(url_for('index'))
-
-    res.exit_time   = datetime.utcnow()
+    exit_time       = now_ist()
+    res.exit_time   = exit_time
     res.status      = 'completed'
-    lot             = res.slot.lot
-    res.amount_paid = calculate_bill(
-        res.entry_time, res.exit_time, res.vehicle_type, lot.rate_2w, lot.rate_4w
-    )
+    res.amount_paid = calculate_bill(res.entry_time, exit_time, res.vehicle_type,
+                                     res.slot.lot.rate_2w, res.slot.lot.rate_4w)
     res.slot.status = 'available'
     db.session.commit()
     flash(f'Checkout done! Amount: ₹{res.amount_paid}', 'success')
     return redirect(url_for('digital_pass', rid=rid))
 
-# ── Health Check ──────────────────────────────────────────────────────────────
+# ── Health ─────────────────────────────────────────────────────────────────────
 @app.route('/health')
 def health():
     try:
         db_type = 'postgresql' if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI'] else 'sqlite'
         return jsonify({
-            'status': 'ok ✅',
-            'db': f'connected ({db_type})',
-            'users': User.query.count(),
-            'lots': ParkingLot.query.count(),
+            'status': 'ok ✅', 'db': f'connected ({db_type})',
+            'time_ist': now_ist().strftime('%d %b %Y %I:%M %p IST'),
+            'users': User.query.count(), 'lots': ParkingLot.query.count(),
             'reservations': Reservation.query.count(),
         })
     except Exception as e:
-        return jsonify({
-            'status': 'error ❌',
-            'db': 'NOT connected',
-            'error': str(e),
-            'fix': 'Set DATABASE_URL in Render > Environment'
-        }), 500
+        return jsonify({'status': 'error ❌', 'error': str(e)}), 500
+
+@app.errorhandler(404)
+def not_found(e): return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def server_error(e): return render_template('500.html'), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-@app.errorhandler(404)
-def not_found(e):
-    return render_template('404.html'), 404
-
-@app.errorhandler(500)
-def server_error(e):
-    return render_template('500.html'), 500
