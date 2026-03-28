@@ -4,6 +4,15 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{% block title %}SpotEasy{% endblock %}</title>
+<!-- CRITICAL: Catch PWA install prompt FIRST before anything else -->
+<script>
+  window._pwaPrompt = null;
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    window._pwaPrompt = e;
+    console.log('[PWA] Install prompt captured ✅');
+  });
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- PWA -->
 <link rel="manifest" href="/static/manifest.json"/>
@@ -414,23 +423,29 @@ let deferredPrompt = null;
   }
 
   function handleInstallClick() {
-    // iOS Safari
-    if (isIOS) {
-      showIOSPopup(); return;
-    }
-    // Android/Desktop — native install prompt
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(r => {
+    // iOS Safari — show step by step
+    if (isIOS) { showIOSPopup(); return; }
+
+    // Use window._pwaPrompt (captured earliest) OR deferredPrompt
+    const prompt = window._pwaPrompt || deferredPrompt;
+
+    if (prompt) {
+      prompt.prompt();
+      prompt.userChoice.then(r => {
         if (r.outcome === 'accepted') {
           dismissInstall();
           showToast('🎉 SpotEasy installed! Open from your home screen.');
+          window._pwaPrompt = null;
+          deferredPrompt = null;
+        } else {
+          window._pwaPrompt = null;
+          deferredPrompt = null;
         }
-        deferredPrompt = null;
       });
       return;
     }
-    // No prompt available — show manual instructions popup
+
+    // No prompt — show manual instructions
     showManualPopup();
   }
 
