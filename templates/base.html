@@ -162,7 +162,7 @@ tailwind.config = {
       <span class="font-semibold text-gray-500 dark:text-gray-500">SpotEasy India &copy; 2026</span>
       <a href="/terms" class="hover:text-green-500 transition-colors ml-2">Terms</a>
     </div>
-    <span class="text-green-500 font-mono text-xs">{{ now_ist.strftime('%d %b %Y · %I:%M %p IST') }}</span>
+    <span class="text-green-500 font-mono text-xs" id="footerTime">SpotEasy India</span>
   </div>
 </footer>
 
@@ -289,6 +289,17 @@ if (isIOS && !isStandalone) {
 }
 
 window.addEventListener('appinstalled', seHide);
+
+// Live clock in footer
+function updateClock() {
+  var el = document.getElementById('footerTime');
+  if (!el) return;
+  var now = new Date();
+  var opts = {timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true};
+  el.textContent = now.toLocaleString('en-IN', opts) + ' IST';
+}
+updateClock();
+setInterval(updateClock, 60000);
 
 
 
