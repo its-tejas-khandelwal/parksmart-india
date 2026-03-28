@@ -414,43 +414,74 @@ let deferredPrompt = null;
   }
 
   function handleInstallClick() {
+    // iOS Safari
     if (isIOS) {
-      const div = document.createElement('div');
-      div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:20px;';
-      div.innerHTML = `<div style="background:white;border-radius:24px;padding:28px;width:100%;max-width:420px;color:#111827;text-align:center;">
-        <div style="font-size:48px;margin-bottom:12px;">📲</div>
-        <div style="font-size:20px;font-weight:900;margin-bottom:16px;">Install on iPhone/iPad</div>
-        <div style="background:#f9fafb;border-radius:16px;padding:16px;text-align:left;font-size:14px;line-height:2.2;color:#374151;">
-          <div>1️⃣ Tap <strong>Share ⬆️</strong> at the bottom of Safari</div>
-          <div>2️⃣ Scroll & tap <strong>"Add to Home Screen"</strong></div>
-          <div>3️⃣ Tap <strong>"Add"</strong> — Done! 🎉</div>
-        </div>
-        <button onclick="this.closest('[style*=fixed]').remove()"
-          style="width:100%;margin-top:16px;background:#16a34a;color:white;border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;">
-          Got it! ✅
-        </button>
-      </div>`;
-      document.body.appendChild(div);
-    } else if (deferredPrompt) {
+      showIOSPopup(); return;
+    }
+    // Android/Desktop — native install prompt
+    if (deferredPrompt) {
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then(r => {
         if (r.outcome === 'accepted') {
           dismissInstall();
-          const t = document.createElement('div');
-          t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:12px 24px;border-radius:14px;font-size:14px;font-weight:700;z-index:9999;';
-          t.textContent = '🎉 SpotEasy installed successfully!';
-          document.body.appendChild(t);
-          setTimeout(() => t.remove(), 3000);
+          showToast('🎉 SpotEasy installed! Open from your home screen.');
         }
         deferredPrompt = null;
       });
-    } else {
-      const t = document.createElement('div');
-      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:12px 20px;border-radius:14px;font-size:13px;font-weight:600;z-index:9999;text-align:center;max-width:320px;';
-      t.textContent = '💡 Click the install icon (⊕) in your browser address bar to install SpotEasy!';
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 4000);
+      return;
     }
+    // No prompt available — show manual instructions popup
+    showManualPopup();
+  }
+
+  function showIOSPopup() {
+    const d = document.createElement('div');
+    d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:16px;';
+    d.innerHTML=`<div style="background:white;border-radius:28px;padding:28px;width:100%;max-width:440px;color:#111827;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <img src="/static/icons/icon-72.png" style="width:60px;height:60px;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.1);"/>
+        <div style="font-size:20px;font-weight:900;margin-top:10px;">Install SpotEasy</div>
+        <div style="font-size:13px;color:#6b7280;">Free app · No App Store needed</div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:16px;padding:16px;font-size:14px;line-height:2.4;color:#374151;border:1px solid #bbf7d0;">
+        <div>1️⃣ Tap <strong>Share</strong> <span style="font-size:18px;">⬆️</span> at the bottom of Safari</div>
+        <div>2️⃣ Scroll and tap <strong>"Add to Home Screen" 📲</strong></div>
+        <div>3️⃣ Tap <strong>"Add"</strong> — SpotEasy icon appears! 🎉</div>
+      </div>
+      <button onclick="this.closest('div[style*=inset]').remove()"
+        style="width:100%;margin-top:16px;background:linear-gradient(135deg,#16a34a,#22c55e);color:white;border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(22,163,74,0.4);">
+        Got it! 👍
+      </button>
+    </div>`;
+    document.body.appendChild(d);
+  }
+
+  function showManualPopup() {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const d = document.createElement('div');
+    d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    d.innerHTML=`<div style="background:white;border-radius:28px;padding:28px;width:100%;max-width:440px;color:#111827;text-align:center;">
+      <img src="/static/icons/icon-72.png" style="width:60px;height:60px;border-radius:16px;margin-bottom:12px;"/>
+      <div style="font-size:20px;font-weight:900;margin-bottom:8px;">Install SpotEasy</div>
+      <div style="background:#f0fdf4;border-radius:14px;padding:14px;font-size:14px;color:#374151;text-align:left;line-height:2.2;border:1px solid #bbf7d0;margin-bottom:16px;">
+        ${isAndroid
+          ? '<div>1️⃣ Tap <strong>3-dot menu ⋮</strong> in Chrome</div><div>2️⃣ Tap <strong>"Add to Home screen"</strong></div><div>3️⃣ Tap <strong>"Add"</strong> ✅</div>'
+          : '<div>1️⃣ Look for <strong>install icon ⊕</strong> in address bar</div><div>2️⃣ Or browser menu → <strong>"Install SpotEasy"</strong></div><div>3️⃣ Click <strong>"Install"</strong> ✅</div>'
+        }
+      </div>
+      <button onclick="this.closest('div[style*=inset]').remove()"
+        style="width:100%;background:linear-gradient(135deg,#16a34a,#22c55e);color:white;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;">
+        OK, got it! ✅
+      </button>
+    </div>`;
+    document.body.appendChild(d);
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:12px 24px;border-radius:14px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.2);';
+    t.textContent=msg; document.body.appendChild(t);
+    setTimeout(()=>t.remove(),3500);
   }
 
   window.addEventListener('appinstalled', () => {
