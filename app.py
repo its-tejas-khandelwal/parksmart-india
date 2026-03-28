@@ -78,7 +78,7 @@ def load_user(uid):
 with app.app_context():
     try:
         db.create_all()
-        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@parksmart.in')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@spoteasy.in')
         admin_pw    = os.environ.get('ADMIN_PASSWORD', 'Admin@1234')
         if not User.query.filter_by(email=admin_email).first():
             admin = User(name='Super Admin', email=admin_email, role='admin', is_approved=True)
@@ -136,7 +136,7 @@ def build_whatsapp_url(res):
     duration_hint = "Grace period: FREE if exit within 15 mins! ⏰"
     rate = f"₹{lot.rate_2w}/hr (🛵)" if res.vehicle_type == '2w' else f"₹{lot.rate_4w}/hr (🚗)"
     msg = (
-        f"🅿️ *ParkSmart India* — Booking Confirmed!%0A"
+        f"🅿️ *SpotEasy* — Booking Confirmed!%0A"
         f"━━━━━━━━━━━━━━━━━━━━%0A"
         f"🏢 *Lot:* {lot.name}%0A"
         f"📍 *Address:* {lot.address}, {lot.city}%0A"
@@ -147,7 +147,7 @@ def build_whatsapp_url(res):
         f"━━━━━━━━━━━━━━━━━━━━%0A"
         f"{duration_hint}%0A"
         f"Show QR code at entry/exit gate.%0A"
-        f"🙏 _Powered by ParkSmart India_"
+        f"🙏 _Powered by SpotEasy_"
     )
     return f"https://wa.me/?text={msg}"
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Parking Pass — ParkSmart{% endblock %}
+{% block title %}Parking Pass — SpotEasy{% endblock %}
 
 {% block content %}
 <div class="max-w-md mx-auto">
@@ -27,7 +27,7 @@
           <div class="bg-white/20 rounded-xl p-1.5">
             <i data-lucide="parking-circle" class="w-6 h-6"></i>
           </div>
-          <span class="font-bold text-lg tracking-tight">ParkSmart India</span>
+          <span class="font-bold text-lg tracking-tight">SpotEasy</span>
         </div>
         <span class="text-xs font-bold px-3 py-1.5 rounded-full
           {% if res.status=='active' %}bg-emerald-400/30 border border-emerald-300/50
@@ -195,7 +195,7 @@ function printPass() {
   const win  = window.open('', '_blank', 'width=500,height=700');
   win.document.write(`
     <!DOCTYPE html><html><head>
-    <title>ParkSmart Pass #{{ res.id }}</title>
+    <title>SpotEasy Pass #{{ res.id }}</title>
     <style>
       *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,sans-serif;}
       body{background:#f9fafb;display:flex;justify-content:center;padding:20px;}
