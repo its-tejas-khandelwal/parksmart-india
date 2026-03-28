@@ -174,6 +174,29 @@ def redirect_by_role():
 def inject_helpers():
     return {'to_ist': to_ist, 'now_ist': now_ist()}
 
+# ── Email Helper ──────────────────────────────────────────────────────────────
+def send_email(to_email, subject, html_body):
+    """Send email via Gmail SMTP. Set GMAIL_USER and GMAIL_PASS in Render env vars."""
+    try:
+        gmail_user = os.environ.get('GMAIL_USER', '')
+        gmail_pass = os.environ.get('GMAIL_PASS', '')
+        if not gmail_user or not gmail_pass:
+            print(f"[Email] No credentials set — skipping email to {to_email}")
+            return False
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From']    = f"SpotEasy India <{gmail_user}>"
+        msg['To']      = to_email
+        msg.attach(MIMEText(html_body, 'html'))
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(gmail_user, gmail_pass)
+            server.sendmail(gmail_user, to_email, msg.as_string())
+        print(f"[Email] ✅ Sent to {to_email}: {subject}")
+        return True
+    except Exception as e:
+        print(f"[Email] ❌ Failed: {e}")
+        return False
+
 # ── Auth ───────────────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
@@ -252,6 +275,35 @@ def approve_vendor(uid):
         user.is_approved = True
         db.session.commit()
         flash(f'Vendor {user.name} approved!', 'success')
+        # Send approval email
+        site_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://parksmart-india.onrender.com')
+        email_html = f'''
+        <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;background:#f9fafb;padding:32px;">
+          <div style="background:linear-gradient(135deg,#16a34a,#22c55e);border-radius:20px;padding:32px;text-align:center;margin-bottom:24px;">
+            <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+            <h1 style="color:white;font-size:24px;font-weight:900;margin:0;">You are Approved!</h1>
+            <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Your SpotEasy Vendor account is now active</p>
+          </div>
+          <div style="background:white;border-radius:16px;padding:24px;margin-bottom:16px;border:1px solid #e5e7eb;">
+            <p style="color:#374151;font-size:15px;line-height:1.6;">Hi <b>{user.name}</b>,</p>
+            <p style="color:#374151;font-size:14px;line-height:1.7;margin-top:12px;">
+              Great news! Your parking vendor account on <b>SpotEasy India</b> has been approved by our admin team.
+              You can now log in and start adding your parking lots.
+            </p>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin:16px 0;">
+              <p style="color:#166534;font-weight:700;font-size:13px;margin:0 0 8px;">What you can do now:</p>
+              <p style="color:#166534;font-size:13px;margin:4px 0;">✅ Add your parking lot</p>
+              <p style="color:#166534;font-size:13px;margin:4px 0;">✅ Set slot counts for 2-wheelers & 4-wheelers</p>
+              <p style="color:#166534;font-size:13px;margin:4px 0;">✅ Set your hourly rates</p>
+              <p style="color:#166534;font-size:13px;margin:4px 0;">✅ View live slot grid and manage bookings</p>
+            </div>
+            <a href="{site_url}/login" style="display:block;background:linear-gradient(135deg,#16a34a,#22c55e);color:white;text-align:center;padding:14px;border-radius:12px;font-weight:800;font-size:15px;text-decoration:none;margin-top:16px;">
+              Login to SpotEasy →
+            </a>
+          </div>
+          <p style="color:#9ca3af;font-size:11px;text-align:center;">SpotEasy India &copy; 2026 &bull; Smart Parking Platform</p>
+        </div>'''
+        send_email(user.email, '🎉 Your SpotEasy Vendor Account is Approved!', email_html)
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/approve_lot/<int:lid>', methods=['POST'])

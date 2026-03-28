@@ -84,6 +84,57 @@
 
 {% block scripts %}
 <script>
+// Live slot refresh every 3 seconds — no page reload (like cricket scores)
+var refreshing = false;
+var countdown = 3;
+
+function updateCountdown() {
+  var el = document.getElementById('refreshCountdown');
+  if (el) el.textContent = countdown + 's';
+  countdown--;
+  if (countdown < 0) {
+    countdown = 3;
+    refreshSlots();
+  }
+}
+
+function refreshSlots() {
+  if (refreshing) return;
+  refreshing = true;
+  var indicator = document.getElementById('liveIndicator');
+  if (indicator) indicator.style.opacity = '0.5';
+
+  fetch('/api/lot/{{ lot.id }}/slots')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      // Update each slot without page reload
+      data.forEach(function(slot) {
+        var el = document.getElementById('slot-' + slot.id);
+        if (!el) return;
+        // Update color
+        el.className = el.className.replace(/slot-available|slot-occupied/g, '');
+        el.classList.add(slot.is_occupied ? 'slot-occupied' : 'slot-available');
+        // Update text
+        var statusEl = el.querySelector('.slot-status');
+        if (statusEl) statusEl.textContent = slot.is_occupied ? 'Occupied' : 'Free';
+      });
+      // Update counts
+      var free = data.filter(function(s){ return !s.is_occupied; }).length;
+      var occ  = data.filter(function(s){ return  s.is_occupied; }).length;
+      var freeEl = document.getElementById('freeCount');
+      var occEl  = document.getElementById('occCount');
+      if (freeEl) freeEl.textContent = free;
+      if (occEl)  occEl.textContent  = occ;
+
+      refreshing = false;
+      if (indicator) indicator.style.opacity = '1';
+    })
+    .catch(function() { refreshing = false; });
+}
+
+setInterval(updateCountdown, 1000);
+</script>
+<script>
 const LOT_ID = {{ lot.id }};
 let toggling = false;
 
