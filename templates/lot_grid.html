@@ -10,6 +10,14 @@
     <p class="text-sm text-gray-500 dark:text-gray-400">{{ lot.address }}, {{ lot.city }}</p>
   </div>
 
+  <!-- LIVE Badge -->
+  <div class="mb-3">
+    <span id="liveIndicator" class="inline-flex items-center gap-1.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 text-xs font-bold px-3 py-1.5 rounded-full border border-green-200 dark:border-green-700 transition-opacity">
+      <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse inline-block"></span>
+      LIVE &mdash; Auto-refreshing in <span id="refreshCountdown">3s</span>
+    </span>
+  </div>
+
   <!-- Live Stats -->
   <div class="flex gap-3">
     <div class="bento bg-white dark:bg-slate-900 text-center px-4 py-3 min-w-20">
@@ -107,25 +115,30 @@ function refreshSlots() {
   fetch('/api/lot/{{ lot.id }}/slots')
     .then(function(r){ return r.json(); })
     .then(function(data) {
-      // Update each slot without page reload
-      data.forEach(function(slot) {
+      // API returns {slots:[...], available:N, occupied:N}
+      var slots = data.slots || data;
+      slots.forEach(function(slot) {
         var el = document.getElementById('slot-' + slot.id);
         if (!el) return;
-        // Update color
         el.className = el.className.replace(/slot-available|slot-occupied/g, '');
         el.classList.add(slot.is_occupied ? 'slot-occupied' : 'slot-available');
-        // Update text
         var statusEl = el.querySelector('.slot-status');
         if (statusEl) statusEl.textContent = slot.is_occupied ? 'Occupied' : 'Free';
       });
-      // Update counts
-      var free = data.filter(function(s){ return !s.is_occupied; }).length;
-      var occ  = data.filter(function(s){ return  s.is_occupied; }).length;
-      var freeEl = document.getElementById('freeCount');
-      var occEl  = document.getElementById('occCount');
-      if (freeEl) freeEl.textContent = free;
-      if (occEl)  occEl.textContent  = occ;
-
+      // Update counts from API response
+      // Update 2W and 4W free counts
+      var free2w = slots.filter(function(s){return s.slot_type==='2w' && !s.is_occupied;}).length;
+      var free4w = slots.filter(function(s){return s.slot_type==='4w' && !s.is_occupied;}).length;
+      var occ2w  = slots.filter(function(s){return s.slot_type==='2w' &&  s.is_occupied;}).length;
+      var occ4w  = slots.filter(function(s){return s.slot_type==='4w' &&  s.is_occupied;}).length;
+      var a2w = document.getElementById('avail2w');
+      var a4w = document.getElementById('avail4w');
+      var o2w = document.getElementById('occ2w');
+      var o4w = document.getElementById('occ4w');
+      if (a2w) a2w.textContent = free2w;
+      if (a4w) a4w.textContent = free4w;
+      if (o2w) o2w.textContent = occ2w;
+      if (o4w) o4w.textContent = occ4w;
       refreshing = false;
       if (indicator) indicator.style.opacity = '1';
     })

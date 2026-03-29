@@ -77,7 +77,7 @@ class ParkingSlot(db.Model):
     reservations = db.relationship('Reservation', backref='slot', lazy=True)
 
     def to_dict(self):
-        return {'id': self.id, 'label': self.label, 'status': self.status, 'type': self.slot_type}
+        return {'id': self.id, 'label': self.label, 'status': self.status, 'slot_type': self.slot_type, 'is_occupied': self.status == 'occupied'}
 
 
 class Reservation(db.Model):

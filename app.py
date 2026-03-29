@@ -276,7 +276,7 @@ def approve_vendor(uid):
         db.session.commit()
         flash(f'Vendor {user.name} approved!', 'success')
         # Send approval email
-        site_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://parksmart-india.onrender.com')
+        site_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://www.spoteasy.in')
         email_html = f'''
         <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;background:#f9fafb;padding:32px;">
           <div style="background:linear-gradient(135deg,#16a34a,#22c55e);border-radius:20px;padding:32px;text-align:center;margin-bottom:24px;">
