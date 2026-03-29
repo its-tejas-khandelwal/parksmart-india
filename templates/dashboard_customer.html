@@ -1,30 +1,7 @@
 {% extends "base.html" %}
 {% block title %}My Bookings — SpotEasy{% endblock %}
 
-{% block scripts %}
-<script>
-// Live refresh active booking timer — no page reload
-function liveRefreshStats() {
-  fetch('/api/customer/stats')
-    .then(function(r){ return r.json(); })
-    .then(function(d) {
-      var a = document.getElementById('activeCount');
-      var c = document.getElementById('completedCount');
-      var t = document.getElementById('totalCount');
-      var s = document.getElementById('spentCount');
-      if (a) a.textContent = d.active || 0;
-      if (c) c.textContent = d.completed || 0;
-      if (t) t.textContent = d.total_bookings || 0;
-      if (s) s.textContent = '₹' + (d.total_spent || 0);
-      // Show live dot if active booking exists
-      var dot = document.getElementById('liveDot');
-      if (dot) dot.style.display = d.active > 0 ? 'inline-block' : 'none';
-    }).catch(function(){});
-}
-// Refresh every 15 seconds silently
-setInterval(liveRefreshStats, 15000);
-</script>
-{% endblock %}
+
 
 {% block content %}
 <div class="animate-fade-in">
@@ -114,4 +91,9 @@ setInterval(liveRefreshStats, 15000);
   </div>
   {% endif %}
 </div>
+{% block scripts %}
+<script>
+SpotEasyLive.start({ role: "customer", userId: {{ current_user.id }} });
+</script>
+{% endblock %}
 {% endblock %}

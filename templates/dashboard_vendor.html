@@ -106,4 +106,9 @@
   </a>
 </div>
 {% endif %}
+{% block scripts %}
+<script>
+SpotEasyLive.start({ role: "vendor", userId: {{ current_user.id }} });
+</script>
+{% endblock %}
 {% endblock %}

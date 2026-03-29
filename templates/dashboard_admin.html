@@ -3,8 +3,17 @@
 {% block content %}
 <div class="flex flex-wrap items-center justify-between gap-4 mb-8 animate-fade-in">
   <div>
-    <h1 class="text-3xl font-black text-gray-900 dark:text-white">Admin Dashboard</h1>
-    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Platform management & analytics</p>
+    <div class="flex items-center gap-3 mb-1">
+      <h1 class="text-3xl font-black text-gray-900 dark:text-white">Admin Dashboard</h1>
+      <span style="background:#ef4444;color:white;font-size:11px;font-weight:900;padding:2px 10px;border-radius:99px;display:none;" id="badgePendingVendors">0 new</span>
+    </div>
+    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">
+      Platform management &nbsp;·&nbsp;
+      <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-bold text-xs">
+        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>
+        Live — auto-refreshing every 5s
+      </span>
+    </p>
   </div>
   <div class="flex gap-2">
     <a href="{{ url_for('admin_notify') }}" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all hover:scale-105">
@@ -65,6 +74,9 @@
         {% else %}
         <span class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs font-bold px-3 py-1.5 rounded-xl">Approved ✓</span>
         {% endif %}
+        <form method="POST" action="{{ url_for('admin_delete_user', uid=v.id) }}" onsubmit="return confirm('Delete vendor {{ v.name }}? This will also delete all their lots and slots.');" style="display:inline;">
+          <button class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:scale-105">Delete 🗑</button>
+        </form>
       </div>
       {% endfor %}
     </div>
@@ -96,6 +108,10 @@
         {% else %}
         <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold px-3 py-1.5 rounded-xl">Live ✓</span>
         {% endif %}
+        <form method="POST" action="{{ url_for('admin_delete_lot', lid=lot.id) }}" onsubmit="return confirm('Delete lot {{ lot.name }}? All slots and reservations will be deleted.');" style="display:inline;margin-left:6px;">
+          <button class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:scale-105">Delete 🗑</button>
+        </form>
+%}
       </div>
       {% endfor %}
     </div>
@@ -141,6 +157,11 @@
             </span>
           </td>
           <td class="py-3 font-bold text-gray-900 dark:text-white">{% if r.amount_paid %}₹{{ r.amount_paid }}{% else %}—{% endif %}</td>
+          <td class="py-3">
+            <form method="POST" action="{{ url_for('admin_delete_reservation', rid=r.id) }}" onsubmit="return confirm('Delete this reservation?');" style="display:inline;">
+              <button class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg">🗑</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

@@ -508,6 +508,25 @@ def book_slot(lid):
               <p style="color:#9ca3af;font-size:11px;text-align:center;">SpotEasy India 2026 - Smart Parking Platform</p>
             </div>'''
             send_email(current_user.email, f'Booking Confirmed - Slot {slot.label} | SpotEasy India', booking_html)
+            # Also email the vendor
+            vendor = lot.owner
+            if vendor and vendor.email:
+                vendor_html = f'''
+                <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;background:#f9fafb;padding:24px;">
+                  <div style="background:linear-gradient(135deg,#2563eb,#3b82f6);border-radius:20px;padding:28px;text-align:center;margin-bottom:20px;">
+                    <div style="font-size:44px;margin-bottom:8px;">P</div>
+                    <h1 style="color:white;font-size:22px;font-weight:900;margin:0;">New Booking!</h1>
+                    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">A customer just booked a slot at your lot</p>
+                  </div>
+                  <div style="background:white;border-radius:14px;padding:20px;border:1px solid #e5e7eb;">
+                    <p style="color:#374151;font-size:13px;margin:4px 0;"><b>Customer:</b> {current_user.name}</p>
+                    <p style="color:#374151;font-size:13px;margin:4px 0;"><b>Lot:</b> {lot.name}</p>
+                    <p style="color:#374151;font-size:13px;margin:4px 0;"><b>Slot:</b> {slot.label}</p>
+                    <p style="color:#374151;font-size:13px;margin:4px 0;"><b>Vehicle:</b> {res.vehicle_number}</p>
+                    <p style="color:#374151;font-size:13px;margin:4px 0;"><b>Entry:</b> {res.entry_time.strftime("%d %b %Y, %I:%M %p")} IST</p>
+                  </div>
+                </div>'''
+                send_email(vendor.email, f'New Booking at {lot.name} | SpotEasy', vendor_html)
         except Exception as e:
             print(f'[Booking Email] Failed: {e}')
         # Send push notification
@@ -594,6 +613,137 @@ def checkout(rid):
     except Exception as e:
         print(f'[Checkout Email] Failed: {e}')
     return redirect(url_for('digital_pass', rid=rid))
+
+# ── Admin Delete Routes ───────────────────────────────────────────────────────
+@app.route('/admin/delete_user/<int:uid>', methods=['POST'])
+@login_required
+def admin_delete_user(uid):
+    if current_user.role != 'admin': return redirect(url_for('index'))
+    user = db.session.get(User, uid)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    if user.role == 'admin':
+        flash('Cannot delete admin account.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    try:
+        # Delete user's reservations first
+        Reservation.query.filter_by(customer_id=uid).delete()
+        # Delete user's lots and slots if vendor
+        if user.role == 'vendor':
+            lots = ParkingLot.query.filter_by(owner_id=uid).all()
+            for lot in lots:
+                Reservation.query.filter(
+                    Reservation.slot_id.in_([s.id for s in lot.slots])
+                ).delete(synchronize_session=False)
+                ParkingSlot.query.filter_by(lot_id=lot.id).delete()
+            ParkingLot.query.filter_by(owner_id=uid).delete()
+        db.session.delete(user)
+        db.session.commit()
+        flash(f'User {user.name} deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting user: {str(e)}', 'danger')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/delete_lot/<int:lid>', methods=['POST'])
+@login_required
+def admin_delete_lot(lid):
+    if current_user.role != 'admin': return redirect(url_for('index'))
+    lot = db.session.get(ParkingLot, lid)
+    if not lot:
+        flash('Lot not found.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    try:
+        # Delete reservations linked to slots in this lot
+        Reservation.query.filter(
+            Reservation.slot_id.in_([s.id for s in lot.slots])
+        ).delete(synchronize_session=False)
+        # Delete slots
+        ParkingSlot.query.filter_by(lot_id=lid).delete()
+        # Delete lot
+        db.session.delete(lot)
+        db.session.commit()
+        flash(f'Lot "{lot.name}" deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting lot: {str(e)}', 'danger')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/delete_reservation/<int:rid>', methods=['POST'])
+@login_required
+def admin_delete_reservation(rid):
+    if current_user.role != 'admin': return redirect(url_for('index'))
+    res = db.session.get(Reservation, rid)
+    if not res:
+        flash('Reservation not found.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    try:
+        # Free the slot if active
+        if res.slot and res.status == 'active':
+            res.slot.status = 'available'
+        db.session.delete(res)
+        db.session.commit()
+        flash('Reservation deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('admin_dashboard'))
+
+# ── Live API Routes (for auto-refresh polling) ────────────────────────────────
+
+@app.route('/api/admin/stats')
+@login_required
+def api_admin_stats():
+    """Admin dashboard live stats — polled every 5 seconds."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Forbidden'}), 403
+    pending_vendors = User.query.filter_by(role='vendor', is_approved=False).count()
+    pending_lots    = ParkingLot.query.filter_by(is_active=False).count()
+    total_users     = User.query.filter(User.role != 'admin').count()
+    total_lots      = ParkingLot.query.count()
+    active_bookings = Reservation.query.filter_by(status='active').count()
+    total_revenue   = db.session.query(db.func.sum(Reservation.amount_paid)).scalar() or 0
+    # Latest pending vendors (for notification badge)
+    new_vendors = [{'id': u.id, 'name': u.name, 'email': u.email}
+                   for u in User.query.filter_by(role='vendor', is_approved=False)
+                   .order_by(User.id.desc()).limit(5).all()]
+    new_lots    = [{'id': l.id, 'name': l.name, 'city': l.city}
+                   for l in ParkingLot.query.filter_by(is_active=False)
+                   .order_by(ParkingLot.id.desc()).limit(5).all()]
+    return jsonify({
+        'pending_vendors': pending_vendors,
+        'pending_lots':    pending_lots,
+        'total_users':     total_users,
+        'total_lots':      total_lots,
+        'active_bookings': active_bookings,
+        'total_revenue':   float(total_revenue),
+        'new_vendors':     new_vendors,
+        'new_lots':        new_lots,
+    })
+
+@app.route('/api/vendor/stats/<int:vid>')
+@login_required
+def api_vendor_stats(vid):
+    """Vendor dashboard live stats — polled every 5 seconds."""
+    if current_user.role != 'vendor' or current_user.id != vid:
+        return jsonify({'error': 'Forbidden'}), 403
+    lots = ParkingLot.query.filter_by(owner_id=vid).all()
+    total_slots     = sum(lot.total_slots for lot in lots)
+    occupied_slots  = sum(lot.occupied_count for lot in lots)
+    free_slots      = total_slots - occupied_slots
+    active_bookings = Reservation.query.join(ParkingSlot).join(ParkingLot)                      .filter(ParkingLot.owner_id==vid, Reservation.status=='active').count()
+    total_revenue   = db.session.query(db.func.sum(Reservation.amount_paid))                      .join(ParkingSlot).join(ParkingLot)                      .filter(ParkingLot.owner_id==vid).scalar() or 0
+    return jsonify({
+        'total_slots':     total_slots,
+        'occupied_slots':  occupied_slots,
+        'free_slots':      free_slots,
+        'active_bookings': active_bookings,
+        'total_revenue':   float(total_revenue),
+        'lots':            [{'id': l.id, 'name': l.name,
+                             'free': l.available_count,
+                             'occupied': l.occupied_count} for l in lots],
+    })
 
 # ── Health ─────────────────────────────────────────────────────────────────────
 @app.route('/health')
