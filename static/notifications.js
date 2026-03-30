@@ -1,1 +1,1 @@
-console.log('[SpotEasy] Notifications: using email only');
+console.log('SpotEasy notifications'); 
