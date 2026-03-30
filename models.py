@@ -1,96 +1,165 @@
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-import secrets
+# ParkSmart India — Complete Deployment Guide ($0)
+## Time needed: ~30 minutes
 
-db = SQLAlchemy()
+---
 
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-    id            = db.Column(db.Integer, primary_key=True)
-    name          = db.Column(db.String(100), nullable=False)
-    email         = db.Column(db.String(150), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    role          = db.Column(db.String(20), nullable=False, default='customer')
-    phone         = db.Column(db.String(15))
-    is_approved   = db.Column(db.Boolean, default=True)
-    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
-    fcm_token     = db.Column(db.String(512))   # Firebase push token
+## PART 1 — Fix Supabase Connection (Most Important)
 
-    lots         = db.relationship('ParkingLot', backref='owner', lazy=True, cascade='all, delete-orphan')
-    reservations = db.relationship('Reservation', backref='customer', lazy=True, cascade='all, delete-orphan')
+Your current Supabase URL might be the wrong format. Here's how to get the correct one:
 
-    def set_password(self, pw):
-        self.password_hash = generate_password_hash(pw)
+1. Go to **supabase.com** → your project
+2. Click **Project Settings** (gear icon) → **Database**
+3. Scroll to **Connection string** → click the **URI** tab
+4. Copy the full string — it looks like:
+   ```
+   postgresql://postgres:YOUR_PASSWORD@db.ABCDEFGH.supabase.co:5432/postgres
+   ```
+5. **IMPORTANT:** Replace `[YOUR-PASSWORD]` with your actual Supabase password
 
-    def check_password(self, pw):
-        return check_password_hash(self.password_hash, pw)
+> ⚠️ Do NOT use the "Connection pooling" URL — use the direct URI tab.
 
-    def to_dict(self):
-        return {'id': self.id, 'name': self.name, 'email': self.email, 'role': self.role}
+---
 
+## PART 2 — Fix Supabase Network Settings
 
-class ParkingLot(db.Model):
-    __tablename__ = 'parking_lots'
-    id          = db.Column(db.Integer, primary_key=True)
-    owner_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    name        = db.Column(db.String(150), nullable=False)
-    address     = db.Column(db.String(300), nullable=False)
-    city        = db.Column(db.String(100), nullable=False)
-    latitude    = db.Column(db.Float, nullable=False)
-    longitude   = db.Column(db.Float, nullable=False)
-    total_slots = db.Column(db.Integer, nullable=False)
-    rate_2w     = db.Column(db.Numeric(8, 2), nullable=False)
-    rate_4w     = db.Column(db.Numeric(8, 2), nullable=False)
-    is_active   = db.Column(db.Boolean, default=False)
-    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+Supabase sometimes blocks Render's servers. Fix this:
 
-    slots = db.relationship('ParkingSlot', backref='lot', lazy=True, cascade='all, delete-orphan')
+1. Go to **Supabase → Project Settings → Database → Network Restrictions**
+2. If you see "Restrict to project's own IP range" — **disable it**
+3. Set it to **Allow all connections** (safe for a student project)
 
-    @property
-    def available_count(self):
-        return sum(1 for s in self.slots if s.status == 'available')
+---
 
-    @property
-    def occupied_count(self):
-        return sum(1 for s in self.slots if s.status == 'occupied')
+## PART 3 — Set Environment Variables in Render
 
-    def to_dict(self):
-        return {
-            'id': self.id, 'name': self.name, 'address': self.address,
-            'city': self.city, 'lat': self.latitude, 'lng': self.longitude,
-            'total': self.total_slots, 'available': self.available_count,
-            'occupied': self.occupied_count,
-            'rate_2w': float(self.rate_2w), 'rate_4w': float(self.rate_4w),
-        }
+Go to **render.com → your service → Environment → Add/Edit variables:**
 
+| Key | Value |
+|-----|-------|
+| `DATABASE_URL` | Your Supabase URI from Part 1 |
+| `SECRET_KEY` | Any 32 random characters, e.g. `x7k2mP9qL4nR8jW1vZ5bY3cA` |
+| `ADMIN_EMAIL` | `admin@parksmart.in` |
+| `ADMIN_PASSWORD` | `Admin@1234` |
+| `PYTHON_VERSION` | `3.11.9` |
 
-class ParkingSlot(db.Model):
-    __tablename__ = 'parking_slots'
-    id        = db.Column(db.Integer, primary_key=True)
-    lot_id    = db.Column(db.Integer, db.ForeignKey('parking_lots.id'), nullable=False)
-    label     = db.Column(db.String(10), nullable=False)
-    status    = db.Column(db.String(20), nullable=False, default='available')
-    slot_type = db.Column(db.String(5), default='4w')
+Click **Save Changes**.
 
-    reservations = db.relationship('Reservation', backref='slot', lazy=True)
+---
 
-    def to_dict(self):
-        return {'id': self.id, 'label': self.label, 'status': self.status, 'slot_type': self.slot_type, 'is_occupied': self.status == 'occupied'}
+## PART 4 — Push Code & Deploy
 
+In terminal inside your project folder:
 
-class Reservation(db.Model):
-    __tablename__ = 'reservations'
-    id             = db.Column(db.Integer, primary_key=True)
-    customer_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    slot_id        = db.Column(db.Integer, db.ForeignKey('parking_slots.id'), nullable=False)
-    vehicle_no     = db.Column(db.String(20), nullable=False)
-    vehicle_type   = db.Column(db.String(5), nullable=False)
-    entry_time     = db.Column(db.DateTime, default=datetime.utcnow)
-    exit_time      = db.Column(db.DateTime)
-    amount_paid    = db.Column(db.Numeric(10, 2), default=0)
-    status         = db.Column(db.String(20), default='active')
-    qr_token       = db.Column(db.String(64), unique=True, default=lambda: secrets.token_hex(32))
-    payment_method = db.Column(db.String(20), default='cash')
-    created_at     = db.Column(db.DateTime, default=datetime.utcnow)
+```bash
+git add .
+git commit -m "fix: complete rebuild v4"
+git push
+```
+
+Render auto-deploys on push. Watch the **Logs** tab in Render.
+
+**Success looks like:**
+```
+[DB] Using PostgreSQL
+[DB] Admin created: admin@parksmart.in
+```
+
+**Error looks like:**
+```
+could not connect to server
+```
+→ Go back and check Part 1 & 2.
+
+---
+
+## PART 5 — Verify Everything
+
+**1. Check DB is working:**
+```
+https://your-app.onrender.com/health
+```
+Should return: `"db": "connected (postgresql)"`
+
+**2. Test all 3 roles:**
+
+| Role | Login | Password |
+|------|-------|----------|
+| Admin | admin@parksmart.in | Admin@1234 |
+| Vendor | Register a new vendor account | — |
+| Customer | Register a new customer account | — |
+
+**3. Full flow test:**
+- Admin logs in → approves vendor account
+- Vendor logs in → Add Lot → fill form
+- Admin → approves the lot
+- Customer → Find Parking → Book Slot → View Digital Pass → WhatsApp share
+- Vendor → Live Grid → see slot turn red
+- Customer → Checkout → see bill calculated
+
+---
+
+## PART 6 — Keep Free Tier Alive
+
+Render free tier sleeps after 15 minutes of inactivity.
+
+1. Go to **uptimerobot.com** → Sign up free
+2. Add Monitor → HTTP(s)
+3. URL: `https://your-app.onrender.com/health`
+4. Check every **14 minutes**
+
+Your app now stays awake 24/7 for free. ✅
+
+---
+
+## Local Development (Without Render/Supabase)
+
+```bash
+# 1. Extract ZIP, open terminal in folder
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Mac/Linux
+
+# 2. Install packages
+pip install -r requirements.txt
+
+# 3. Run (uses SQLite automatically — no DB setup needed)
+python app.py
+
+# 4. Open browser
+# http://localhost:5000
+```
+
+Admin is auto-created: `admin@parksmart.in` / `Admin@1234`
+
+---
+
+## How to Check Database Entries
+
+**Option 1 — In-app (easiest):**
+Login as Admin → Dashboard → click "🗄️ View DB" button
+
+**Option 2 — Supabase Dashboard:**
+Go to supabase.com → your project → Table Editor
+
+**Option 3 — Health endpoint:**
+Visit `/health` — shows live record counts
+
+---
+
+## IoT Hardware (Future Upgrade)
+
+| # | Component | Function | Price (India) | Buy From |
+|---|-----------|----------|---------------|----------|
+| 1 | Raspberry Pi 4B | Main controller at gate | ₹4,500–6,000 | robu.in, evelta.com |
+| 2 | ESP32 | Per-slot WiFi sensor node | ₹350–500 each | robu.in |
+| 3 | HC-SR04 Ultrasonic | Car detection per slot | ₹60–100 each | robu.in |
+| 4 | QR Scanner Module | Scan customer pass at gate | ₹800–1,200 | amazon.in |
+| 5 | Servo + Boom Barrier | Physical gate | ₹500–1,500 | amazon.in |
+| 6 | 16×2 LCD Display | Show slot count at gate | ₹150–250 | robu.in |
+| 7 | RGB LED per slot | Green/Red light above slot | ₹10–20 each | robu.in |
+| 8 | Weatherproof Enclosure | Protect outdoor electronics | ₹400–800 | amazon.in |
+
+**Estimated cost for one 30-slot lot: ₹25,000–40,000**
+
+**How IoT connects to your existing code:**
+The ESP32 sends a POST to `/vendor/slot/<id>/toggle` when a car arrives or leaves — the same API your web UI already uses. Zero backend changes needed.

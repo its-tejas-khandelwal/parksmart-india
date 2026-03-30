@@ -1,26 +1,139 @@
-// Firebase Service Worker — SpotEasy India
-// Handles background push notifications
+{% extends "base.html" %}
+{% block title %}SpotEasy — Smart Parking India{% endblock %}
+{% block content %}
 
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+<!-- Hero -->
+<div style="text-align:center;padding:48px 0 24px;" class="anim-item visible">
+  <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#10B981;font-size:12px;font-weight:600;padding:6px 14px;border-radius:99px;margin-bottom:24px;">
+    <span class="pulse-dot pulse-green"></span> Live · Smart Parking Platform
+  </div>
+  <h1 class="syne" style="font-size:clamp(42px,7vw,76px);font-weight:800;line-height:1.08;margin-bottom:20px;">
+    <span class="gradient-text">Park Smart.</span><br/>Save Time.
+  </h1>
+  <p style="color:var(--text-secondary);font-size:clamp(15px,2vw,18px);max-width:520px;margin:0 auto 32px;line-height:1.6;">
+    Find, book and manage parking across Indian cities.<br/>
+    Digital QR pass · UPI payments · Live slot tracking.
+  </p>
+  <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:32px;">
+    <a href="{{ url_for('lots_list') }}" class="btn-primary" style="padding:14px 28px;font-size:15px;">🔍 Find Parking</a>
+    <a href="{{ url_for('register') }}" class="btn-secondary" style="padding:14px 28px;font-size:15px;">Register Free →</a>
+  </div>
 
-// Initialize Firebase
-firebase.initializeApp({
-  apiKey: self.FIREBASE_API_KEY || '',
-  authDomain: self.FIREBASE_AUTH_DOMAIN || '',
-  projectId: self.FIREBASE_PROJECT_ID || '',
-  storageBucket: self.FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: self.FIREBASE_SENDER_ID || '',
-  appId: self.FIREBASE_APP_ID || ''
-});
+  <!-- Live stats bar -->
+  <div style="display:inline-flex;align-items:center;gap:0;background:rgba(13,17,23,0.8);border:1px solid var(--border-medium);border-radius:99px;padding:10px 20px;flex-wrap:wrap;justify-content:center;gap:0;" id="statsBar">
+    <div class="stat-item" style="display:flex;align-items:center;gap:8px;padding:0 16px;">
+      <span class="pulse-dot pulse-green"></span>
+      <span style="font-size:13px;color:var(--text-secondary);">Live</span>
+    </div>
+    <div style="width:1px;height:16px;background:var(--border-subtle);"></div>
+    <div class="stat-item" style="display:flex;align-items:center;gap:8px;padding:0 16px;">
+      <span class="gradient-text syne" style="font-weight:700;font-size:15px;" id="stat-slots">{{ available_slots }}+</span>
+      <span style="font-size:13px;color:var(--text-secondary);">Available Slots</span>
+    </div>
+    <div style="width:1px;height:16px;background:var(--border-subtle);"></div>
+    <div class="stat-item" style="display:flex;align-items:center;gap:8px;padding:0 16px;">
+      <span class="gradient-text syne" style="font-weight:700;font-size:15px;" id="stat-lots">{{ total_lots }}</span>
+      <span style="font-size:13px;color:var(--text-secondary);">Parking Lots</span>
+    </div>
+    <div style="width:1px;height:16px;background:var(--border-subtle);"></div>
+    <div class="stat-item" style="display:flex;align-items:center;gap:8px;padding:0 16px;">
+      <span class="gradient-text syne" style="font-weight:700;font-size:15px;" id="stat-cities">{{ total_cities }}</span>
+      <span style="font-size:13px;color:var(--text-secondary);">Cities</span>
+    </div>
+    <div style="width:1px;height:16px;background:var(--border-subtle);"></div>
+    <div class="stat-item" style="display:flex;align-items:center;gap:8px;padding:0 16px;">
+      <span style="font-size:13px;color:var(--text-secondary);">⏱️ 15 Min Free Grace</span>
+    </div>
+  </div>
+</div>
 
-const messaging = firebase.messaging();
+<!-- Features bento -->
+<div style="margin-top:64px;margin-bottom:64px;" class="anim-item">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Everything you need</div>
+    <h2 class="syne" style="font-size:28px;font-weight:700;">Built for India 🇮🇳</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;">
+    {% for emoji, title, desc, color in [
+      ('📡','Live Slot Tracking','See real-time availability. No guessing, no waiting.','#6366F1'),
+      ('📱','Digital QR Pass','Book once, scan at entry. Fully paperless.','#22D3EE'),
+      ('💳','UPI & Cash','Pay your way — UPI, cash, whatever works.','#10B981'),
+      ('⏱️','15 Min Free','Always get a grace period on every booking.','#F59E0B'),
+      ('📲','PWA — Install Free','Works on any phone. No app store needed.','#818CF8'),
+      ('💬','WhatsApp Share','Share your pass with family instantly.','#25D366'),
+    ] %}
+    <div class="glass-card glass-card-hover anim-item" style="padding:20px;">
+      <div style="width:42px;height:42px;border-radius:12px;background:{{ color }}22;border:1px solid {{ color }}44;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px;">{{ emoji }}</div>
+      <div class="syne" style="font-weight:600;font-size:15px;margin-bottom:6px;">{{ title }}</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">{{ desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
 
-// Handle background messages
-messaging.onBackgroundMessage(function(payload) {
-  console.log('[SpotEasy] Background message:', payload);
-  const title = payload.notification.title || 'SpotEasy India';
-  const body  = payload.notification.body  || 'You have a new notification';
-  const icon  = '/static/icons/icon-192.png';
-  self.registration.showNotification(title, { body, icon });
-});
+<!-- Role cards -->
+<div style="margin-bottom:64px;" class="anim-item">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Who is it for?</div>
+    <h2 class="syne" style="font-size:28px;font-weight:700;">Made for Everyone</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
+    <div class="glass-card glass-card-hover anim-item" style="padding:28px;border-color:rgba(16,185,129,0.2);">
+      <div style="font-size:36px;margin-bottom:16px;">🚗</div>
+      <h3 class="syne" style="font-size:20px;font-weight:700;margin-bottom:8px;">Customer</h3>
+      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6;">Find and book parking near you. Get a digital QR pass. 15 minutes always free!</p>
+      <a href="{{ url_for('register') }}" class="btn-primary" style="background:linear-gradient(135deg,#10B981,#059669);">Start Parking →</a>
+    </div>
+    <div class="glass-card glass-card-hover anim-item" style="padding:28px;border-color:rgba(99,102,241,0.2);">
+      <div style="font-size:36px;margin-bottom:16px;">🏢</div>
+      <h3 class="syne" style="font-size:20px;font-weight:700;margin-bottom:8px;">Parking Owner</h3>
+      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6;">List your lot, manage live slot grid, track occupancy and grow revenue.</p>
+      <a href="{{ url_for('register') }}" class="btn-primary">Register Lot →</a>
+    </div>
+    <div class="glass-card glass-card-hover anim-item" style="padding:28px;border-color:rgba(245,158,11,0.2);">
+      <div style="font-size:36px;margin-bottom:16px;">⚙️</div>
+      <h3 class="syne" style="font-size:20px;font-weight:700;margin-bottom:8px;">Super Admin</h3>
+      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6;">Approve vendors, monitor platform, manage all lots and bookings.</p>
+      <a href="{{ url_for('login') }}" class="btn-primary" style="background:linear-gradient(135deg,#F59E0B,#D97706);">Admin Login →</a>
+    </div>
+  </div>
+</div>
+
+<!-- How it works -->
+<div style="margin-bottom:64px;" class="anim-item">
+  <div style="text-align:center;margin-bottom:40px;">
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Simple process</div>
+    <h2 class="syne" style="font-size:28px;font-weight:700;">How It Works</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;max-width:800px;margin:0 auto;">
+    {% for num, emoji, title, desc in [
+      ('01','🔍','Find','Search parking lots in your city and see live availability.'),
+      ('02','📱','Book & Pay','Select a slot, enter your vehicle number and confirm.'),
+      ('03','🚗','Scan & Park','Show your QR pass at entry. Checkout when done.'),
+    ] %}
+    <div class="anim-item" style="text-align:center;padding:28px 20px;">
+      <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#6366F1,#22D3EE);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px;">{{ emoji }}</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:6px;font-family:'JetBrains Mono',monospace;">STEP {{ num }}</div>
+      <div class="syne" style="font-size:17px;font-weight:700;margin-bottom:8px;">{{ title }}</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">{{ desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+// Refresh live stats every 30s
+function refreshStats(){
+  fetch('/api/live-stats').then(function(r){return r.json();}).then(function(d){
+    if(!d.ok) return;
+    var s=document.getElementById('stat-slots');
+    var l=document.getElementById('stat-lots');
+    var c=document.getElementById('stat-cities');
+    if(s) s.textContent=d.available_slots+'+';
+    if(l) l.textContent=d.total_lots;
+    if(c) c.textContent=d.total_cities;
+  }).catch(function(){});
+}
+setInterval(refreshStats, 30000);
+</script>
+{% endblock %}
