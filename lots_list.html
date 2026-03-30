@@ -1,238 +1,389 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>SpotEasy — Starting Up...</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&display=swap" rel="stylesheet"/>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
-body{background:#0a0d14;color:white;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+{% extends "base.html" %}
+{% block title %}Parking Pass #SE{{ '%05d'|format(res.id) }} — SpotEasy{% endblock %}
 
-/* Animated grid background like Render but green */
-.grid-bg{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(34,197,94,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,0.06) 1px,transparent 1px);background-size:60px 60px;}
-.grid-fade{position:fixed;inset:0;z-index:1;background:radial-gradient(ellipse at center,transparent 0%,#0a0d14 70%);}
-
-/* Floating particles */
-.particles{position:fixed;inset:0;z-index:2;overflow:hidden;pointer-events:none;}
-@keyframes rise{from{transform:translateY(100vh) scale(0);opacity:0}to{transform:translateY(-10vh) scale(1);opacity:0.15}}
-.p{position:absolute;border-radius:50%;background:#22c55e;animation:rise linear infinite;}
-
-/* Card */
-.wrap{position:relative;z-index:10;width:100%;max-width:480px;}
-
-/* Top status bar (like Render's terminal) */
-.terminal{background:#0f1117;border:1px solid rgba(34,197,94,0.2);border-radius:16px 16px 0 0;padding:16px 20px;font-family:'Courier New',monospace;font-size:12px;color:#6b7280;margin-bottom:0;min-height:80px;}
-.terminal-line{margin-bottom:6px;display:flex;gap:10px;align-items:baseline;}
-.terminal-time{color:#374151;font-size:11px;min-width:55px;}
-.terminal-msg{color:#22c55e;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-.cursor{display:inline-block;width:8px;height:13px;background:#22c55e;animation:blink 1s infinite;vertical-align:text-bottom;margin-left:4px;}
-
-/* Main card */
-.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-top:none;border-radius:0 0 24px 24px;padding:24px;}
-
-/* Logo */
-.logo-wrap{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
-.logo{width:52px;height:52px;background:linear-gradient(135deg,#16a34a,#22c55e);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;box-shadow:0 0 30px rgba(34,197,94,0.35);}
-.logo-text h1{font-size:20px;font-weight:900;margin-bottom:2px;}
-.logo-text p{font-size:12px;color:#6b7280;}
-
-/* Progress */
-.prog-wrap{background:rgba(255,255,255,0.06);border-radius:99px;height:6px;overflow:hidden;margin-bottom:6px;}
-.prog-bar{height:6px;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;width:5%;transition:width 0.8s ease;}
-.prog-txt{font-size:11px;color:#4ade80;font-weight:700;margin-bottom:20px;}
-
-/* Divider */
-.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:16px 0;}
-
-/* Quiz */
-.q-label{font-size:10px;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
-.q-text{font-size:14px;font-weight:800;color:#f1f5f9;margin-bottom:12px;line-height:1.5;min-height:42px;}
-.q-opts{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;}
-.opt{background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 8px;font-size:12px;font-weight:600;color:#d1d5db;cursor:pointer;text-align:center;width:100%;line-height:1.3;transition:all 0.15s;}
-.opt:hover{background:rgba(34,197,94,0.12);border-color:#22c55e;color:white;}
-.opt.correct{background:rgba(34,197,94,0.2)!important;border-color:#4ade80!important;color:#4ade80!important;}
-.opt.wrong{background:rgba(239,68,68,0.15)!important;border-color:#f87171!important;color:#f87171!important;}
-.opt.reveal{background:rgba(34,197,94,0.12)!important;border-color:#22c55e!important;color:#4ade80!important;}
-
-.q-footer{display:flex;justify-content:space-between;align-items:center;font-size:11px;}
-.q-num{color:#4b5563;}
-.q-score{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-weight:800;padding:2px 10px;border-radius:99px;}
-.fact{background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:10px;padding:10px 12px;font-size:11px;color:#86efac;line-height:1.6;margin-top:10px;display:none;}
-
-/* Tip ticker */
-.tip{background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 12px;font-size:11px;color:#6b7280;text-align:center;margin-top:14px;}
-.tip b{color:#4ade80;}
-</style>
-</head>
-<body>
-
-<div class="grid-bg"></div>
-<div class="grid-fade"></div>
-<div class="particles" id="parts"></div>
-
-<div class="wrap">
-  <!-- Terminal header (like Render's UI) -->
-  <div class="terminal" id="terminal">
-    <div class="terminal-line">
-      <span class="terminal-time" id="t1"></span>
-      <span class="terminal-msg">INCOMING HTTP REQUEST DETECTED ...</span>
-    </div>
-    <div class="terminal-line" id="tl2" style="display:none;">
-      <span class="terminal-time" id="t2"></span>
-      <span class="terminal-msg">SERVICE WAKING UP ...</span>
-    </div>
-    <div class="terminal-line" id="tl3" style="display:none;">
-      <span class="terminal-time" id="t3"></span>
-      <span class="terminal-msg">STARTING SPOTEASY INDIA ...<span class="cursor"></span></span>
-    </div>
+{% block content %}
+<div class="max-w-lg mx-auto">
+  <div class="flex items-center gap-3 mb-5 no-print">
+    <a href="{{ url_for('customer_dashboard') }}"
+       class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> My Bookings
+    </a>
+    <span class="text-gray-300 dark:text-gray-700">|</span>
+    <span class="text-xs font-mono text-gray-400">Booking #SE{{ '%05d'|format(res.id) }}</span>
   </div>
 
-  <!-- Main card -->
-  <div class="card">
-    <div class="logo-wrap">
-      <div class="logo">🅿️</div>
-      <div class="logo-text">
-        <h1>SpotEasy India</h1>
-        <p>Smart Parking &bull; Waking up server...</p>
+  <!-- ══════════════════════════════════════════════ -->
+  <!--              PRINTABLE PASS SLIP              -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="passCard" class="bg-white rounded-3xl overflow-hidden shadow-2xl"
+       style="font-family:'Inter',sans-serif;">
+
+    <!-- Header Band -->
+    <div style="background:linear-gradient(135deg,#16a34a 0%,#059669 40%,#0891b2 100%);padding:24px 28px 20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="background:rgba(255,255,255,0.2);border-radius:12px;padding:8px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:20px;">🅿️</span>
+          </div>
+          <div>
+            <div style="color:white;font-size:20px;font-weight:900;letter-spacing:-0.5px;">SpotEasy</div>
+            <div style="color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;">Parking Pass · India 🇮🇳</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="background:{% if res.status=='active' %}rgba(74,222,128,0.3){% else %}rgba(255,255,255,0.2){% endif %};border:1px solid rgba(255,255,255,0.4);border-radius:20px;padding:5px 12px;color:white;font-size:11px;font-weight:800;">
+            {% if res.status=='active' %}🟢 ACTIVE{% else %}✅ COMPLETED{% endif %}
+          </div>
+          <div style="color:rgba(255,255,255,0.6);font-size:10px;margin-top:4px;">#SE{{ '%05d'|format(res.id) }}</div>
+        </div>
+      </div>
+      <div style="color:white;font-size:18px;font-weight:800;line-height:1.2;">{{ res.slot.lot.name }}</div>
+      <div style="color:rgba(255,255,255,0.75);font-size:12px;margin-top:4px;">📍 {{ res.slot.lot.address }}, {{ res.slot.lot.city }}</div>
+    </div>
+
+    <!-- Perforation -->
+    <div style="display:flex;align-items:center;background:#f9fafb;height:20px;position:relative;">
+      <div style="width:14px;height:14px;background:white;border-radius:50%;position:absolute;left:-7px;border:2px solid #e5e7eb;"></div>
+      <div style="flex:1;border-top:2px dashed #d1d5db;margin:0 12px;"></div>
+      <div style="width:14px;height:14px;background:white;border-radius:50%;position:absolute;right:-7px;border:2px solid #e5e7eb;"></div>
+    </div>
+
+    <!-- Body -->
+    <div style="background:#f9fafb;padding:20px 28px;">
+
+      <!-- Main details grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:white;border-radius:16px;padding:12px;text-align:center;border:1px solid #e5e7eb;">
+          <div style="color:#6b7280;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Slot</div>
+          <div style="font-size:20px;font-weight:900;color:#111827;">{{ res.slot.label }}</div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:2px;">{{ '🛵 2-Wheeler' if res.slot.slot_type=='2w' else '🚗 4-Wheeler' }}</div>
+        </div>
+        <div style="background:white;border-radius:16px;padding:12px;text-align:center;border:1px solid #e5e7eb;">
+          <div style="color:#6b7280;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Vehicle</div>
+          <div style="font-size:14px;font-weight:900;color:#111827;font-family:monospace;letter-spacing:1px;">{{ res.vehicle_no }}</div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:2px;">{{ '2-Wheeler' if res.vehicle_type=='2w' else '4-Wheeler' }}</div>
+        </div>
+        <div style="background:{% if res.status=='completed' %}#f0fdf4{% else %}#fffbeb{% endif %};border-radius:16px;padding:12px;text-align:center;border:1px solid {% if res.status=='completed' %}#bbf7d0{% else %}#fde68a{% endif %};">
+          <div style="color:#6b7280;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Amount</div>
+          {% if res.amount_paid and res.status=='completed' %}
+          <div style="font-size:20px;font-weight:900;color:#15803d;">₹{{ res.amount_paid|int }}</div>
+          {% if res.payment_method %}<div style="font-size:9px;color:#16a34a;margin-top:2px;font-weight:700;text-transform:uppercase;">{{ res.payment_method }}</div>{% endif %}
+          {% else %}
+          <div style="font-size:14px;font-weight:900;color:#d97706;">Pending</div>
+          <div style="font-size:9px;color:#f59e0b;margin-top:2px;">Pay at exit</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Time details -->
+      <div style="background:white;border-radius:16px;padding:14px 16px;margin-bottom:16px;border:1px solid #e5e7eb;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="color:#6b7280;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Entry Time</div>
+            <div style="font-size:14px;font-weight:800;color:#111827;">{{ res.entry_time.strftime('%d %b %Y') }}</div>
+            <div style="font-size:18px;font-weight:900;color:#059669;">{{ res.entry_time.strftime('%I:%M %p') }}</div>
+            <div style="font-size:10px;color:#9ca3af;">IST</div>
+          </div>
+          {% if res.exit_time %}
+          <div>
+            <div style="color:#6b7280;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Exit Time</div>
+            <div style="font-size:14px;font-weight:800;color:#111827;">{{ res.exit_time.strftime('%d %b %Y') }}</div>
+            <div style="font-size:18px;font-weight:900;color:#dc2626;">{{ res.exit_time.strftime('%I:%M %p') }}</div>
+            <div style="font-size:10px;color:#9ca3af;">IST</div>
+          </div>
+          {% else %}
+          <div>
+            <div style="color:#6b7280;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Rate</div>
+            <div style="font-size:18px;font-weight:900;color:#111827;">₹{{ res.slot.lot.rate_2w if res.vehicle_type=='2w' else res.slot.lot.rate_4w }}<span style="font-size:12px;font-weight:600;color:#6b7280;">/hr</span></div>
+            <div style="font-size:10px;color:#f59e0b;font-weight:700;">⏱ FREE if &lt; 15 mins</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- QR Code Section -->
+      <div style="background:white;border-radius:16px;padding:16px;text-align:center;border:1px solid #e5e7eb;margin-bottom:16px;">
+        {% if qr_b64 %}
+        <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code"
+             style="width:140px;height:140px;margin:0 auto;display:block;image-rendering:pixelated;border-radius:8px;"/>
+        {% else %}
+        <div style="width:140px;height:140px;margin:0 auto;background:#f3f4f6;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed #d1d5db;">
+          <span style="font-size:32px;">⬛</span>
+          <span style="font-size:10px;color:#9ca3af;margin-top:4px;">QR Loading...</span>
+        </div>
+        {% endif %}
+        <div style="font-size:11px;color:#6b7280;margin-top:8px;font-weight:600;">Scan QR code at entry / exit gate</div>
+        <div style="font-size:9px;color:#d1d5db;font-family:monospace;margin-top:4px;">{{ res.qr_token[:24] }}...</div>
+      </div>
+
+      <!-- Footer Note -->
+      <div style="background:#eff6ff;border-radius:12px;padding:10px 14px;border:1px solid #bfdbfe;display:flex;gap:8px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;">ℹ️</span>
+        <div style="font-size:11px;color:#1d4ed8;line-height:1.4;">
+          <strong>Grace Period:</strong> No charge if you exit within 15 minutes of entry.
+          Keep this pass handy. Generated at {{ now_ist.strftime('%d %b %Y %I:%M %p') }} IST.
+        </div>
       </div>
     </div>
 
-    <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
-    <div class="prog-txt" id="progTxt">Connecting to server...</div>
-
-    <hr class="div"/>
-
-    <!-- Quiz -->
-    <div class="q-label">🧠 Answer while you wait!</div>
-    <div class="q-text" id="qText">Loading question...</div>
-    <div class="q-opts" id="qOpts"></div>
-    <div class="q-footer">
-      <span class="q-num" id="qNum">Question 1/5</span>
-      <span class="q-score" id="qScore">Score: 0</span>
+    <!-- Bottom Footer Band -->
+    <div style="background:#111827;padding:12px 28px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="color:#6b7280;font-size:10px;">SpotEasy India © 2026</div>
+      <div style="color:#4b5563;font-size:10px;font-family:monospace;">#SE{{ '%05d'|format(res.id) }}</div>
     </div>
-    <div class="fact" id="factEl"></div>
-    <div class="tip" id="tipEl">💡 SpotEasy — Smart Parking for India</div>
+  </div>
+  <!-- ══════════════════════════════════ END PASS ══ -->
+
+
+  <!-- Action Buttons -->
+  <div class="mt-5 space-y-3 no-print">
+
+    <!-- Language Toggle -->
+    <div class="flex gap-2">
+      <button onclick="setLang('en')" id="btnEN"
+        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-slate-800 dark:bg-slate-700 text-white transition hover:scale-105">
+        🇬🇧 English
+      </button>
+      <button onclick="setLang('hi')" id="btnHI"
+        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:border-green-400 transition hover:scale-105">
+        🇮🇳 हिन्दी
+      </button>
+    </div>
+
+    <!-- Checkout with payment options -->
+    {% if res.status == 'active' %}
+    <div class="card">
+      <p class="text-sm font-black text-gray-700 dark:text-gray-300 mb-3">💳 Select Payment & Checkout</p>
+      <form method="POST" action="{{ url_for('checkout', rid=res.id) }}" id="checkoutForm">
+        <input type="hidden" name="payment_method" id="payMethodInput" value="cash"/>
+
+        <!-- Payment Options: Cash & UPI only -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <button type="button" onclick="selectPay('cash',this)"
+            class="pay-btn border-2 border-green-500 bg-green-50 dark:bg-green-950/40 rounded-2xl p-4 text-center transition-all hover:scale-105 active:scale-95">
+            <div class="text-3xl mb-1">💵</div>
+            <div class="font-bold text-sm text-green-700 dark:text-green-300">Cash</div>
+            <div class="text-xs text-gray-400 mt-0.5">Pay at counter</div>
+          </button>
+          <button type="button" onclick="selectPay('upi',this)"
+            class="pay-btn border-2 border-gray-200 dark:border-dark-600 rounded-2xl p-4 text-center transition-all hover:scale-105 active:scale-95">
+            <div class="text-3xl mb-1">📱</div>
+            <div class="font-bold text-sm text-gray-600 dark:text-gray-300">UPI</div>
+            <div class="text-xs text-gray-400 mt-0.5">GPay / PhonePe</div>
+          </button>
+        </div>
+
+        <!-- UPI Panel — shows when UPI selected -->
+        <div id="upiPanel" class="hidden mb-4">
+          <div class="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-2xl p-4">
+            <p class="text-xs font-black text-green-700 dark:text-green-300 mb-3 text-center">
+              📱 Scan QR or tap your UPI app to pay
+            </p>
+
+            <!-- UPI QR Code -->
+            <div class="flex justify-center mb-3">
+              <div class="bg-white rounded-2xl p-3 shadow-lg" id="upiQRBox">
+                <canvas id="upiQRCanvas" width="160" height="160"></canvas>
+              </div>
+            </div>
+
+            <!-- UPI ID display -->
+            <div class="bg-white dark:bg-dark-800 rounded-xl px-4 py-3 flex items-center justify-between mb-3 border border-gray-200 dark:border-dark-600">
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">UPI ID</p>
+                <p class="font-black text-sm text-gray-900 dark:text-white" id="upiIdDisplay">{{ config.get('VENDOR_UPI_ID','spoteasy@upi') }}</p>
+              </div>
+              <button onclick="copyUPI()" class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-200 transition">
+                📋 Copy
+              </button>
+            </div>
+
+            <!-- Auto-detect UPI apps -->
+            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 text-center">Tap to open your UPI app:</p>
+            <div id="upiAppsGrid" class="grid grid-cols-4 gap-2 mb-3">
+              <!-- Apps auto-detected by JS -->
+            </div>
+
+            <p class="text-xs text-center text-green-600 dark:text-green-400 font-medium">
+              ✅ Pay first, then tap Checkout below
+            </p>
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full font-bold py-4 rounded-2xl text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+          style="background:linear-gradient(135deg,#dc2626,#b91c1c);">
+          🚪 Checkout & Calculate Bill
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- WhatsApp -->
+    <a href="{{ wa_url }}" target="_blank"
+       class="flex items-center justify-center gap-3 text-white font-bold py-4 rounded-2xl transition hover:scale-[1.02] hover:shadow-xl"
+       style="background:linear-gradient(135deg,#25D366,#128C7E);">
+      <svg class="w-6 h-6 fill-white" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Share on WhatsApp
+    </a>
+
+    <!-- Print / PDF -->
+    <button onclick="printPass()"
+      class="w-full border-2 border-gray-200 dark:border-slate-700 font-bold py-3.5 rounded-2xl hover:bg-gray-50 dark:hover:bg-slate-800 transition hover:scale-[1.01] text-sm text-gray-700 dark:text-gray-300 flex items-center justify-center gap-2">
+      <i data-lucide="printer" class="w-4 h-4"></i>
+      Save as PDF / Print Slip
+    </button>
   </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-// Particles
-var parts = document.getElementById('parts');
-for(var i=0;i<14;i++){
-  var p=document.createElement('div');
-  p.className='p';
-  var s=Math.random()*60+15;
-  p.style.cssText='width:'+s+'px;height:'+s+'px;left:'+Math.random()*100+'%;animation-duration:'+(Math.random()*10+8)+'s;animation-delay:'+(Math.random()*8)+'s;';
-  parts.appendChild(p);
+// ── UPI & Payment ────────────────────────────────────────────────────────────
+const VENDOR_UPI  = document.getElementById('upiIdDisplay')?.textContent?.trim() || 'spoteasy@upi';
+const VENDOR_NAME = encodeURIComponent('{{ res.slot.lot.name[:20] | replace("'","") }}');
+const BOOKING_REF = 'SE{{ "%05d"|format(res.id) }}';
+const UPI_LINK    = `upi://pay?pa=${VENDOR_UPI}&pn=${VENDOR_NAME}&tn=${encodeURIComponent('SpotEasy '+BOOKING_REF)}&cu=INR`;
+
+// All known UPI apps — auto-detect which are installed
+const UPI_APPS = [
+  { name:'GPay',    icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/64px-Google_Pay_Logo.svg.png', pkg:'com.google.android.apps.nbu.paisa.user', scheme:'gpay' },
+  { name:'PhonePe', icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/64px-PhonePe_Logo.svg.png',    pkg:'com.phonepe.app',                       scheme:'phonepe' },
+  { name:'Paytm',   icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/64px-Paytm_Logo_%28standalone%29.svg.png', pkg:'net.one97.paytm', scheme:'paytm' },
+  { name:'BHIM',    icon:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/BHIM_logo.svg/64px-BHIM_logo.svg.png',           pkg:'in.org.npci.upiapp',                    scheme:'bhim' },
+];
+
+function selectPay(method, btn) {
+  document.getElementById('payMethodInput').value = method;
+  document.querySelectorAll('.pay-btn').forEach(b => {
+    b.classList.remove('border-green-500','bg-green-50','dark:bg-green-950/40');
+    b.classList.add('border-gray-200','dark:border-dark-600');
+    // Reset text color
+    b.querySelector('.font-bold')?.classList.remove('text-green-700','dark:text-green-300');
+    b.querySelector('.font-bold')?.classList.add('text-gray-600','dark:text-gray-300');
+  });
+  btn.classList.add('border-green-500','bg-green-50');
+  btn.classList.remove('border-gray-200');
+
+  const panel = document.getElementById('upiPanel');
+  if (method === 'upi') {
+    panel.classList.remove('hidden');
+    buildUPIApps();
+    generateUPIQR();
+  } else {
+    panel.classList.add('hidden');
+  }
 }
 
-// Terminal time
-function nowTime(){return new Date().toLocaleTimeString('en-GB',{hour12:false});}
-document.getElementById('t1').textContent=nowTime();
-setTimeout(function(){
-  document.getElementById('tl2').style.display='flex';
-  document.getElementById('t2').textContent=nowTime();
-},2000);
-setTimeout(function(){
-  document.getElementById('tl3').style.display='flex';
-  document.getElementById('t3').textContent=nowTime();
-},4000);
+function buildUPIApps() {
+  const grid = document.getElementById('upiAppsGrid');
+  if (!grid || grid.children.length > 0) return;
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
 
-// Quiz data
-var QS=[
-  {q:'What is SpotEasy\'s free grace period?',opts:['5 mins','10 mins','15 mins','30 mins'],ans:2,fact:'SpotEasy gives 15 minutes free! Exit within 15 mins → zero charge.'},
-  {q:'UPI stands for?',opts:['United Payment Interface','Unified Payments Interface','Universal Pay Index','Unique Payment ID'],ans:1,fact:'UPI processes 10+ billion transactions monthly in India!'},
-  {q:'PWA stands for?',opts:['Private Web App','Progressive Web App','Premium Web Access','Public Web App'],ans:1,fact:'SpotEasy is a PWA — install it without any App Store!'},
-  {q:'Which city has India\'s worst parking problem?',opts:['Delhi','Mumbai','Bengaluru','Chennai'],ans:2,fact:'Bengaluru has 1 crore+ vehicles but parking for only 20 lakh!'},
-  {q:'SpotEasy supports which payments?',opts:['Only Cash','Only UPI','Cash & UPI','Card Only'],ans:2,fact:'SpotEasy supports both Cash and UPI — easy and contactless!'},
-  {q:'What does IoT stand for?',opts:['Internet of Things','Index of Technology','Interface of Tools','Intranet of Things'],ans:0,fact:'IoT sensors can auto-detect parking slot availability!'},
-  {q:'How many cars are sold in India per year?',opts:['10 Lakh','25 Lakh','42 Lakh','70 Lakh'],ans:2,fact:'India sells ~42 lakh cars annually — smart parking is critical!'},
-];
-var TIPS=['💡 Use <b>UPI</b> for instant contactless payment','🔔 Enable <b>notifications</b> for booking alerts','📱 SpotEasy works <b>offline</b> after install!','⏱️ <b>Grace period</b> — exit in 15 mins, pay nothing!','🗺️ Use <b>Find Parking</b> to see nearest lots on map'];
-var STAGES=[
-  {p:10,m:'🌐 Connecting to server...'},
-  {p:22,m:'🗄️ Waking up database...'},
-  {p:36,m:'🔧 Loading application...'},
-  {p:50,m:'🗺️ Fetching parking data...'},
-  {p:64,m:'🔐 Setting up security...'},
-  {p:76,m:'📱 Preparing your experience...'},
-  {p:87,m:'🎯 Almost ready...'},
-  {p:94,m:'✨ Finalizing...'},
-];
+  UPI_APPS.forEach(app => {
+    let url;
+    if (isAndroid) {
+      url = `intent://pay?pa=${VENDOR_UPI}&pn=${VENDOR_NAME}&tn=${encodeURIComponent('SpotEasy '+BOOKING_REF)}&cu=INR#Intent;scheme=upi;package=${app.pkg};end`;
+    } else if (isMobile) {
+      // iOS — use universal UPI link
+      url = `upi://pay?pa=${VENDOR_UPI}&pn=${VENDOR_NAME}&tn=${encodeURIComponent('SpotEasy '+BOOKING_REF)}&cu=INR`;
+    } else {
+      // Desktop — copy to clipboard
+      url = null;
+    }
 
-// Shuffle + pick 5
-var shuffled=QS.slice().sort(function(){return Math.random()-0.5;}).slice(0,5);
-var qIdx=0,score=0,answered=false;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bg-white dark:bg-dark-800 rounded-xl p-2 text-center border border-gray-200 dark:border-dark-600 hover:scale-110 transition-all active:scale-95';
+    btn.innerHTML = `<img src="${app.icon}" class="w-8 h-8 mx-auto rounded-lg" onerror="this.style.display='none';this.nextSibling.style.fontSize='24px'"/><div class="text-xs font-bold text-gray-600 dark:text-gray-300 mt-1" style="font-size:10px;">${app.name}</div>`;
+    btn.onclick = () => {
+      if (url) {
+        window.location.href = url;
+      } else {
+        // Desktop: copy UPI ID
+        navigator.clipboard?.writeText(VENDOR_UPI).then(() => {
+          btn.style.background = '#dcfce7';
+          setTimeout(() => btn.style.background = '', 1000);
+          showToast(`📋 UPI ID copied! Open ${app.name} and pay to: ${VENDOR_UPI}`);
+        });
+      }
+    };
+    grid.appendChild(btn);
+  });
 
-function loadQ(){
-  if(qIdx>=shuffled.length){
-    document.getElementById('qText').textContent='Quiz done! Score: '+score+'/'+shuffled.length+' '+(score>=4?'🏆':score>=2?'👍':'💪');
-    document.getElementById('qOpts').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:12px;font-size:13px;color:#4ade80;font-weight:800;">Server is almost ready...</div>';
-    return;
-  }
-  answered=false;
-  var q=shuffled[qIdx];
-  document.getElementById('qText').textContent=q.q;
-  document.getElementById('qNum').textContent='Question '+(qIdx+1)+'/'+shuffled.length;
-  document.getElementById('factEl').style.display='none';
-  var d=document.getElementById('qOpts');
-  d.innerHTML='';
-  q.opts.forEach(function(o,i){
-    var b=document.createElement('button');
-    b.className='opt';b.textContent=o;
-    b.onclick=function(){pick(i,b);};
-    d.appendChild(b);
+  // Add "Any UPI" button
+  const anyBtn = document.createElement('button');
+  anyBtn.type = 'button';
+  anyBtn.className = 'bg-green-100 dark:bg-green-900/40 rounded-xl p-2 text-center border border-green-300 dark:border-green-700 hover:scale-110 transition-all active:scale-95';
+  anyBtn.innerHTML = `<div style="font-size:22px;">🔗</div><div class="text-xs font-bold text-green-700 dark:text-green-300 mt-1" style="font-size:10px;">Any App</div>`;
+  anyBtn.onclick = () => { window.location.href = UPI_LINK; };
+  grid.appendChild(anyBtn);
+}
+
+function generateUPIQR() {
+  // Generate QR using Google Charts API (free, no library needed)
+  const canvas = document.getElementById('upiQRCanvas');
+  if (!canvas) return;
+  const img = document.createElement('img');
+  const encoded = encodeURIComponent(UPI_LINK);
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encoded}&bgcolor=ffffff&color=111827&margin=2`;
+  img.width = 160; img.height = 160;
+  img.style.borderRadius = '8px';
+  img.alt = 'UPI QR Code';
+  canvas.parentNode.replaceChild(img, canvas);
+}
+
+function copyUPI() {
+  const id = document.getElementById('upiIdDisplay')?.textContent?.trim();
+  if (!id) return;
+  navigator.clipboard?.writeText(id).then(() => {
+    showToast('📋 UPI ID copied to clipboard!');
+  }).catch(() => {
+    prompt('Copy this UPI ID:', id);
   });
 }
 
-function pick(i,btn){
-  if(answered)return;
-  answered=true;
-  var q=shuffled[qIdx];
-  document.querySelectorAll('.opt').forEach(function(b){b.disabled=true;});
-  if(i===q.ans){btn.classList.add('correct');score++;document.getElementById('qScore').textContent='Score: '+score+' ✅';}
-  else{btn.classList.add('wrong');document.querySelectorAll('.opt')[q.ans].classList.add('reveal');}
-  var f=document.getElementById('factEl');
-  f.textContent='💡 '+q.fact;f.style.display='block';
-  setTimeout(function(){qIdx++;loadQ();},2800);
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:12px 20px;border-radius:14px;font-size:13px;font-weight:600;z-index:9999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.25);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
-// Progress
-var si=0;
-function nextStage(){
-  if(si<STAGES.length){var s=STAGES[si++];document.getElementById('progBar').style.width=s.p+'%';document.getElementById('progTxt').textContent=s.m;}
+// Language toggle
+const T = {
+  en: { slot:'Slot', vehicle:'Vehicle', amount:'Amount', entry:'Entry Time', rate:'Rate', qrlabel:'Scan QR code at entry / exit gate' },
+  hi: { slot:'स्लॉट', vehicle:'वाहन', amount:'राशि', entry:'प्रवेश समय', rate:'दर', qrlabel:'प्रवेश/निकास पर QR स्कैन करें' }
+};
+function setLang(lang) {
+  // Update all label divs in pass
+  document.querySelectorAll('[data-label]').forEach(el => {
+    const key = el.dataset.label;
+    if (T[lang][key]) el.textContent = T[lang][key];
+  });
+  document.getElementById('btnEN').style.cssText = lang==='en' ? 'background:#1e293b;color:white;' : '';
+  document.getElementById('btnHI').style.cssText = lang==='hi' ? 'background:#1e293b;color:white;' : '';
 }
-nextStage();
-var pt=setInterval(nextStage,5000);
 
-// Tips
-var ti=0;
-function rotateTip(){document.getElementById('tipEl').innerHTML=TIPS[ti++%TIPS.length];}
-rotateTip();setInterval(rotateTip,4000);
-
-// Poll server
-var attempts=0;
-var dest=new URLSearchParams(window.location.search).get('next')||'/';
-
-function poll(){
-  attempts++;
-  fetch('/health',{cache:'no-store',signal:AbortSignal.timeout(6000)})
-    .then(function(r){if(r.ok)return r.json();throw 0;})
-    .then(function(){
-      clearInterval(pt);
-      document.getElementById('progBar').style.width='100%';
-      document.getElementById('progTxt').textContent='✅ SpotEasy is ready! Redirecting...';
-      setTimeout(function(){window.location.href=dest;},700);
-    })
-    .catch(function(){
-      if(attempts<90)setTimeout(poll,2000);
-      else window.location.href=dest;
-    });
+// Print ONLY the pass card
+function printPass() {
+  const card = document.getElementById('passCard');
+  const win  = window.open('', '_blank', 'width=540,height=760');
+  win.document.write(`<!DOCTYPE html><html><head>
+    <title>SpotEasy Pass #SE{{ '%05d'|format(res.id) }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;}
+      body{background:#fff;display:flex;justify-content:center;padding:20px;font-family:'Inter',sans-serif;}
+      @media print{body{padding:0;}}
+    </style>
+    </head><body>
+    <div style="max-width:480px;width:100%;">${card.outerHTML}</div>
+    <script>window.onload=function(){setTimeout(()=>{window.print();},500);}<\/script>
+    </body></html>`);
+  win.document.close();
 }
-setTimeout(poll,1500);
-loadQ();
 </script>
-</body>
-</html>
+{% endblock %}

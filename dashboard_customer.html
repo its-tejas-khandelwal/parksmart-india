@@ -1,97 +1,117 @@
 {% extends "base.html" %}
-{% block title %}Live Grid — {{ lot.name }}{% endblock %}
+{% block title %}Find Parking — SpotEasy{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-start justify-between gap-4 mb-6">
-  <div>
-    <a href="{{ url_for('vendor_dashboard') }}" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-2">
-      <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
-    </a>
-    <h1 class="text-2xl font-bold">{{ lot.name }}</h1>
-    <p class="text-sm text-gray-500 dark:text-gray-400">{{ lot.address }}, {{ lot.city }}</p>
-  </div>
-
-  <!-- LIVE Badge -->
-  <div class="mb-3">
-    <span id="liveIndicator" class="inline-flex items-center gap-1.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 text-xs font-bold px-3 py-1.5 rounded-full border border-green-200 dark:border-green-700 transition-opacity">
-      <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse inline-block"></span>
-      LIVE &mdash; Auto-refreshing in <span id="refreshCountdown">3s</span>
-    </span>
-  </div>
-
-  <!-- Live Stats -->
-  <div class="flex gap-3">
-    <div class="bento bg-white dark:bg-slate-900 text-center px-4 py-3 min-w-20">
-      <div class="text-xl font-bold text-emerald-600" id="avail2w">{{ lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length }}</div>
-      <div class="text-xs text-gray-500">🛵 Free</div>
-    </div>
-    <div class="bento bg-white dark:bg-slate-900 text-center px-4 py-3 min-w-20">
-      <div class="text-xl font-bold text-blue-600" id="avail4w">{{ lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length }}</div>
-      <div class="text-xs text-gray-500">🚗 Free</div>
-    </div>
-    <div class="bento bg-white dark:bg-slate-900 text-center px-4 py-3 min-w-20">
-      <div class="text-xl font-bold text-red-500" id="occupiedCount">{{ lot.occupied_count }}</div>
-      <div class="text-xs text-gray-500">Occupied</div>
-    </div>
-  </div>
-</div>
-
-<!-- Legend -->
-<div class="flex gap-5 mb-5 text-sm flex-wrap">
-  <span class="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400">
-    <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Available
-  </span>
-  <span class="flex items-center gap-2 font-medium text-red-600 dark:text-red-400">
-    <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> Occupied
-  </span>
-  <span class="text-gray-400 text-xs">Click any slot to toggle status</span>
-  <span class="ml-auto text-xs text-gray-400" id="lastUpdate">Auto-refresh every 3s</span>
-</div>
-
-<!-- 2W Section -->
-{% set slots_2w = lot.slots|selectattr('slot_type','eq','2w')|list %}
-{% if slots_2w %}
 <div class="mb-6">
-  <h3 class="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-    <span class="text-lg">🛵</span> 2-Wheeler Slots ({{ slots_2w|length }} total)
-  </h3>
-  <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
-    {% for slot in slots_2w %}
-    <button id="slot-{{ slot.id }}" onclick="toggleSlot({{ slot.id }})"
-      data-status="{{ slot.status }}" data-type="{{ slot.slot_type }}"
-      class="slot-btn aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer
-      {% if slot.status=='available' %}slot-available{% else %}slot-occupied{% endif %}">
-      <span class="text-base">{% if slot.status=='available' %}🟢{% else %}🔴{% endif %}</span>
-      <span class="mt-0.5">{{ slot.label }}</span>
-    </button>
-    {% endfor %}
-  </div>
+  <h1 class="text-3xl font-bold">Find Parking</h1>
+  <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">{{ lots|length }} active parking lots near you</p>
 </div>
-{% endif %}
 
-<!-- 4W Section -->
-{% set slots_4w = lot.slots|selectattr('slot_type','eq','4w')|list %}
-{% if slots_4w %}
-<div class="mb-6">
-  <h3 class="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-    <span class="text-lg">🚗</span> 4-Wheeler Slots ({{ slots_4w|length }} total)
-  </h3>
-  <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
-    {% for slot in slots_4w %}
-    <button id="slot-{{ slot.id }}" onclick="toggleSlot({{ slot.id }})"
-      data-status="{{ slot.status }}" data-type="{{ slot.slot_type }}"
-      class="slot-btn aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer
-      {% if slot.status=='available' %}slot-available{% else %}slot-occupied{% endif %}">
-      <span class="text-base">{% if slot.status=='available' %}🟢{% else %}🔴{% endif %}</span>
-      <span class="mt-0.5">{{ slot.label }}</span>
-    </button>
-    {% endfor %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <!-- Leaflet Map -->
+  <div class="bento bg-white dark:bg-slate-900 p-0 overflow-hidden rounded-2xl" style="height:420px;">
+    <div id="map" class="w-full h-full rounded-2xl"></div>
+  </div>
+
+  <!-- Lot Cards -->
+  <div class="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+    {% if lots %}
+      {% for lot in lots %}
+      <div class="bento bg-white dark:bg-slate-900 hover:shadow-xl transition border border-gray-100 dark:border-slate-800">
+        <div class="flex justify-between items-start mb-2">
+          <h3 class="font-bold text-lg leading-tight">{{ lot.name }}</h3>
+          <span class="shrink-0 ml-2 text-xs font-bold px-2 py-1 rounded-full
+            {% if lot.available_count > 0 %}bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300
+            {% else %}bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300{% endif %}">
+            {% if lot.available_count > 0 %}{{ lot.available_count }} free{% else %}Full{% endif %}
+          </span>
+        </div>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          <i data-lucide="map-pin" class="w-3 h-3 inline mr-1"></i>{{ lot.address }}, {{ lot.city }}
+        </p>
+
+        <!-- 2W/4W counts -->
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl px-3 py-2 flex items-center gap-2">
+            <span class="text-lg">🛵</span>
+            <div>
+              <div class="font-bold text-sm text-amber-700 dark:text-amber-300">
+                {{ lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length }} free
+              </div>
+              <div class="text-xs text-gray-500">2-Wheeler · ₹{{ lot.rate_2w }}/hr</div>
+            </div>
+          </div>
+          <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl px-3 py-2 flex items-center gap-2">
+            <span class="text-lg">🚗</span>
+            <div>
+              <div class="font-bold text-sm text-blue-700 dark:text-blue-300">
+                {{ lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length }} free
+              </div>
+              <div class="text-xs text-gray-500">4-Wheeler · ₹{{ lot.rate_4w }}/hr</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-1.5 mb-4">
+          {% set pct = (lot.available_count / lot.total_slots * 100)|round|int if lot.total_slots > 0 else 0 %}
+          <div class="bg-emerald-500 h-1.5 rounded-full transition-all" style="width:{{ pct }}%"></div>
+        </div>
+
+        {% if current_user.is_authenticated and current_user.role == 'customer' %}
+          {% if lot.available_count > 0 %}
+          <a href="{{ url_for('book_slot', lid=lot.id) }}"
+             class="block w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition">
+            Book Now →
+          </a>
+          {% else %}
+          <button disabled class="block w-full text-center bg-gray-200 dark:bg-slate-700 text-gray-500 text-sm font-semibold py-3 rounded-xl cursor-not-allowed">
+            Lot Full
+          </button>
+          {% endif %}
+        {% elif not current_user.is_authenticated %}
+        <a href="{{ url_for('login') }}" class="block w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition">
+          Login to Book →
+        </a>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="text-center py-16 text-gray-400">
+      <i data-lucide="map-pin-off" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+      <p class="font-medium">No active parking lots yet.</p>
+    </div>
+    {% endif %}
   </div>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-SpotEasyLive.start({ role: "lot_grid", lotId: {{ lot.id }} });
+const lotsData = {{ lots_json | tojson | safe }};
+const map = L.map('map').setView([22.9734, 78.6569], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'© OpenStreetMap contributors'}).addTo(map);
+
+if (lotsData.length > 0) {
+  const bounds = [];
+  lotsData.forEach(lot => {
+    const color = lot.available > 0 ? '#10b981' : '#ef4444';
+    L.circleMarker([lot.lat, lot.lng], {
+      radius:13, fillColor:color, color:'#fff', weight:2, fillOpacity:0.9
+    }).addTo(map)
+      .bindPopup(`<b>${lot.name}</b><br>${lot.city}<br>🟢 ${lot.available} free of ${lot.total}`);
+    bounds.push([lot.lat, lot.lng]);
+  });
+  if (bounds.length) map.fitBounds(bounds, {padding:[50,50]});
+}
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(p => {
+    L.marker([p.coords.latitude, p.coords.longitude])
+      .addTo(map).bindPopup('📍 You are here').openPopup();
+    map.setView([p.coords.latitude, p.coords.longitude], 13);
+  });
+}
 </script>
 {% endblock %}

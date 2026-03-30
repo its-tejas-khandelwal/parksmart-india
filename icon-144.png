@@ -1,35 +1,33 @@
-{
-  "name": "SpotEasy India",
-  "short_name": "SpotEasy",
-  "description": "Smart Parking for Every Indian City",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0f1117",
-  "theme_color": "#16a34a",
-  "scope": "/",
-  "lang": "en-IN",
-  "icons": [
-    { "src": "/static/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ],
-  "shortcuts": [
-    {
-      "name": "Find Parking",
-      "short_name": "Find",
-      "url": "/lots",
-      "icons": [{ "src": "/static/icons/icon-96.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "My Bookings",
-      "short_name": "Bookings",
-      "url": "/customer/dashboard",
-      "icons": [{ "src": "/static/icons/icon-96.png", "sizes": "96x96" }]
+// SpotEasy Keep-Alive + Silent Auto-Refresh
+// Pings /health every 13 minutes silently to prevent Render sleep
+
+(function() {
+  // Silent background ping - no page reload ever
+  async function silentPing() {
+    try {
+      const r = await fetch('/health', { cache: 'no-store' });
+      const d = await r.json();
+      console.log(`[SpotEasy] Keep-alive ping ✅ ${d.time_ist || ''}`);
+    } catch(e) {
+      console.log('[SpotEasy] Ping failed:', e.message);
     }
-  ],
-  "categories": ["travel", "utilities"]
-}
+  }
+
+  // Ping every 13 minutes
+  setInterval(silentPing, 13 * 60 * 1000);
+  // First ping after 60 seconds
+  setTimeout(silentPing, 60 * 1000);
+
+  // Silent data refresh for dashboards - updates numbers without reload
+  window.SpotEasyRefresh = {
+    handlers: [],
+    register(fn) { this.handlers.push(fn); },
+    async run() {
+      for (const fn of this.handlers) {
+        try { await fn(); } catch(e) {}
+      }
+    }
+  };
+  // Run refresh every 30 seconds silently
+  setInterval(() => window.SpotEasyRefresh.run(), 30 * 1000);
+})();
