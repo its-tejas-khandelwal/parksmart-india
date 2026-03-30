@@ -1,105 +1,194 @@
 {% extends "base.html" %}
-{% block title %}Add Parking Lot — SpotEasy{% endblock %}
+{% block title %}Register — SpotEasy{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto">
-  <div class="mb-6">
-    <a href="{{ url_for('vendor_dashboard') }}" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-4">
-      <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Dashboard
-    </a>
-    <h1 class="text-3xl font-bold">Add Parking Lot</h1>
-    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Your lot will go live after admin approval.</p>
-  </div>
+<div class="min-h-[70vh] flex items-center justify-center py-8">
+  <div class="w-full max-w-md animate-scale-in">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-xl">
+        <i data-lucide="user-plus" class="w-8 h-8 text-white"></i>
+      </div>
+      <h1 class="text-3xl font-black text-gray-900 dark:text-white">Create account</h1>
+      <p class="text-gray-500 dark:text-gray-400 mt-1">Join SpotEasy — it's free 🇮🇳</p>
+    </div>
+    <div class="card shadow-2xl">
+      <form method="POST" id="regForm" class="space-y-4" novalidate>
 
-  <div class="bento bg-white dark:bg-slate-900 shadow-xl">
-    <form method="POST" class="space-y-5">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        <div class="md:col-span-2">
-          <label class="block text-sm font-semibold mb-1">Lot Name *</label>
-          <input type="text" name="name" required placeholder="e.g. Connaught Place Parking B2"
-                 class="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="block text-sm font-semibold mb-1">Full Address *</label>
-          <input type="text" name="address" required placeholder="e.g. Block A, Near Metro Gate 2"
-                 class="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
-        </div>
-
+        <!-- Name -->
         <div>
-          <label class="block text-sm font-semibold mb-1">City *</label>
-          <input type="text" name="city" required placeholder="e.g. New Delhi"
-                 class="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Full Name *</label>
+          <input type="text" name="name" id="regName" required minlength="3" maxlength="60"
+                 placeholder="Rahul Sharma" class="inp"/>
+          <p id="nameErr" class="text-red-500 text-xs mt-1 hidden">Name must be at least 3 characters.</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-semibold mb-1">Latitude *</label>
-            <input type="text" name="latitude" required placeholder="28.6315"
-                   class="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold mb-1">Longitude *</label>
-            <input type="text" name="longitude" required placeholder="77.2167"
-                   class="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
-          </div>
+        <!-- Email -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Email Address *</label>
+          <input type="email" name="email" id="regEmail" required
+                 placeholder="you@example.com" class="inp"/>
+          <p id="emailErr" class="text-red-500 text-xs mt-1 hidden">Enter a valid email address.</p>
         </div>
 
-        <!-- 2W Slots -->
-        <div class="bento bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">🛵</span>
-            <span class="font-semibold text-sm">2-Wheeler Slots</span>
+        <!-- Phone -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+            Phone <span class="text-gray-400 font-normal">(Indian mobile)</span>
+          </label>
+          <div class="flex gap-2">
+            <span class="inp w-14 text-center font-bold shrink-0 bg-gray-50 dark:bg-dark-700 cursor-default">+91</span>
+            <input type="tel" name="phone" id="regPhone" maxlength="10"
+                   placeholder="9876543210" class="inp flex-1"/>
           </div>
+          <p id="phoneErr" class="text-red-500 text-xs mt-1 hidden">Enter a valid 10-digit Indian mobile number.</p>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Password *</label>
+          <div class="relative">
+            <input type="password" name="password" id="regPw" required minlength="8"
+                   placeholder="Min 8 chars, 1 number" class="inp pr-10"/>
+            <button type="button" onclick="togglePw('regPw','eyeReg')"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              <i data-lucide="eye" class="w-4 h-4" id="eyeReg"></i>
+            </button>
+          </div>
+          <!-- Password strength bar -->
+          <div class="mt-2 h-1.5 bg-gray-100 dark:bg-dark-700 rounded-full overflow-hidden">
+            <div id="pwStrengthBar" class="h-full rounded-full transition-all duration-300 w-0"></div>
+          </div>
+          <p id="pwStrengthText" class="text-xs mt-1 text-gray-400"></p>
+          <p id="pwErr" class="text-red-500 text-xs mt-1 hidden">Password must be 8+ chars with at least 1 number.</p>
+        </div>
+
+        <!-- Role -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Register As *</label>
           <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">No. of Slots</label>
-              <input type="number" name="slots_2w" min="0" max="500" placeholder="e.g. 20"
-                     class="w-full border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"/>
-            </div>
-            <div>
-              <label class="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Rate (₹/hour) *</label>
-              <input type="number" name="rate_2w" required min="1" step="0.5" placeholder="20"
-                     class="w-full border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"/>
-            </div>
+            <label class="cursor-pointer">
+              <input type="radio" name="role" value="customer" class="peer hidden" checked/>
+              <div class="peer-checked:border-green-500 peer-checked:bg-green-50 dark:peer-checked:bg-green-950/40 peer-checked:text-green-700 dark:peer-checked:text-green-300 border-2 border-gray-200 dark:border-dark-600 rounded-2xl p-3 text-center transition-all hover:border-green-300 hover:scale-105">
+                <div class="text-2xl mb-1">🚗</div>
+                <div class="font-bold text-sm">Customer</div>
+                <div class="text-xs text-gray-400">Driver / Parker</div>
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="role" value="vendor" class="peer hidden"/>
+              <div class="peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-950/40 peer-checked:text-blue-700 dark:peer-checked:text-blue-300 border-2 border-gray-200 dark:border-dark-600 rounded-2xl p-3 text-center transition-all hover:border-blue-300 hover:scale-105">
+                <div class="text-2xl mb-1">🅿️</div>
+                <div class="font-bold text-sm">Vendor</div>
+                <div class="text-xs text-gray-400">Lot Owner</div>
+              </div>
+            </label>
           </div>
         </div>
 
-        <!-- 4W Slots -->
-        <div class="bento bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">🚗</span>
-            <span class="font-semibold text-sm">4-Wheeler Slots</span>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">No. of Slots</label>
-              <input type="number" name="slots_4w" min="0" max="500" placeholder="e.g. 30"
-                     class="w-full border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
-            </div>
-            <div>
-              <label class="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Rate (₹/hour) *</label>
-              <input type="number" name="rate_4w" id="rate4w" required min="1" step="0.5" placeholder="50"
-                     class="w-full border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
-            </div>
-          </div>
-        </div>
+        <!-- Terms -->
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" id="terms" required
+                 class="mt-0.5 w-4 h-4 rounded border-gray-300 accent-green-500"/>
+          <span class="text-xs text-gray-500 dark:text-gray-400">
+            I agree to SpotEasy's <a href="/terms" target="_blank" class="text-green-600 font-semibold hover:underline">Terms of Use</a>
+            and confirm I'm 18+. Vendor accounts require admin approval.
+          </span>
+        </label>
 
-      </div>
-
-      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-sm text-blue-700 dark:text-blue-300">
-        💡 <strong>How to get coordinates:</strong> Open <a href="https://maps.google.com" target="_blank" class="underline font-medium">Google Maps</a> → right-click your location → copy the numbers shown (e.g. 28.6315, 77.2167)
-      </div>
-
-      <div class="flex gap-3 pt-2">
-        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition">
-          Submit for Approval →
+        <button type="submit" id="regSubmit"
+          class="btn-primary w-full py-3.5 text-base rounded-2xl mt-2">
+          Create Account →
         </button>
-        <a href="{{ url_for('vendor_dashboard') }}" class="px-6 py-3.5 border-2 border-gray-200 dark:border-slate-700 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-800 transition">
-          Cancel
-        </a>
+      </form>
+      <div class="mt-5 pt-4 border-t border-gray-100 dark:border-dark-700 text-center text-sm text-gray-500">
+        Already have an account?
+        <a href="{{ url_for('login') }}" class="text-green-600 dark:text-green-400 font-bold hover:underline ml-1">Login</a>
       </div>
-    </form>
+    </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePw(fieldId, iconId) {
+  const field = document.getElementById(fieldId);
+  const icon  = document.getElementById(iconId);
+  if (field.type === 'password') {
+    field.type = 'text';
+    icon.setAttribute('data-lucide','eye-off');
+  } else {
+    field.type = 'password';
+    icon.setAttribute('data-lucide','eye');
+  }
+  lucide.createIcons();
+}
+
+// Password strength checker
+document.getElementById('regPw').addEventListener('input', function() {
+  const v = this.value;
+  const bar  = document.getElementById('pwStrengthBar');
+  const text = document.getElementById('pwStrengthText');
+  let score = 0;
+  if (v.length >= 8) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[A-Z]/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+
+  const levels = [
+    { w:'0%',    cls:'bg-transparent', label:'' },
+    { w:'25%',   cls:'bg-red-500',     label:'Weak' },
+    { w:'50%',   cls:'bg-yellow-500',  label:'Fair' },
+    { w:'75%',   cls:'bg-blue-500',    label:'Good' },
+    { w:'100%',  cls:'bg-green-500',   label:'Strong 💪' },
+  ];
+  const lvl = levels[score];
+  bar.style.width = lvl.w;
+  bar.className   = `h-full rounded-full transition-all duration-300 ${lvl.cls}`;
+  text.textContent = lvl.label;
+  text.className   = `text-xs mt-1 ${score < 2 ? 'text-red-400' : score < 4 ? 'text-yellow-500' : 'text-green-500'}`;
+});
+
+// Phone: digits only
+document.getElementById('regPhone').addEventListener('input', function() {
+  this.value = this.value.replace(/\D/g,'').slice(0,10);
+});
+
+// Name: no numbers
+document.getElementById('regName').addEventListener('input', function() {
+  this.value = this.value.replace(/[0-9]/g,'');
+});
+
+// Form validation
+document.getElementById('regForm').addEventListener('submit', function(e) {
+  let ok = true;
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const pw    = document.getElementById('regPw').value;
+  const terms = document.getElementById('terms').checked;
+
+  // Name
+  if (name.length < 3) {
+    document.getElementById('nameErr').classList.remove('hidden'); ok = false;
+  } else document.getElementById('nameErr').classList.add('hidden');
+
+  // Email
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    document.getElementById('emailErr').classList.remove('hidden'); ok = false;
+  } else document.getElementById('emailErr').classList.add('hidden');
+
+  // Phone (optional but if filled must be 10 digits)
+  if (phone && !/^[6-9][0-9]{9}$/.test(phone)) {
+    document.getElementById('phoneErr').classList.remove('hidden'); ok = false;
+  } else document.getElementById('phoneErr').classList.add('hidden');
+
+  // Password
+  if (pw.length < 8 || !/[0-9]/.test(pw)) {
+    document.getElementById('pwErr').classList.remove('hidden'); ok = false;
+  } else document.getElementById('pwErr').classList.add('hidden');
+
+  if (!terms) { alert('Please agree to the Terms of Use.'); ok = false; }
+  if (!ok) e.preventDefault();
+});
+</script>
 {% endblock %}

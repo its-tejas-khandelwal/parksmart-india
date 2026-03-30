@@ -1,27 +1,35 @@
-name: Keep SpotEasy Awake
-
-on:
-  schedule:
-    - cron: '*/14 * * * *'   # Every 14 minutes — GitHub allows min 5 mins
-  workflow_dispatch:           # Manual trigger anytime
-
-jobs:
-  wake:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wake SpotEasy (Render)
-        run: |
-          echo "🏓 Pinging SpotEasy at $(date '+%d %b %Y %H:%M IST')"
-          # First ping — wakes the server
-          curl -s -o /dev/null -w "Status: %{http_code} | Time: %{time_total}s\n" \
-            https://parksmart-india.onrender.com/health || true
-          echo "Waiting 20 seconds for server to fully wake..."
-          sleep 20
-          # Second ping — confirms it's up
-          RESPONSE=$(curl -s https://parksmart-india.onrender.com/health || echo "failed")
-          echo "Response: $RESPONSE"
-          if echo "$RESPONSE" | grep -q "ok"; then
-            echo "✅ SpotEasy is LIVE and running!"
-          else
-            echo "⚠️ Server still waking up — will retry next cycle"
-          fi
+{
+  "name": "SpotEasy India",
+  "short_name": "SpotEasy",
+  "description": "Smart Parking for Every Indian City",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#16a34a",
+  "scope": "/",
+  "lang": "en-IN",
+  "icons": [
+    { "src": "/static/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Find Parking",
+      "short_name": "Find",
+      "url": "/lots",
+      "icons": [{ "src": "/static/icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "My Bookings",
+      "short_name": "Bookings",
+      "url": "/customer/dashboard",
+      "icons": [{ "src": "/static/icons/icon-96.png", "sizes": "96x96" }]
+    }
+  ],
+  "categories": ["travel", "utilities"]
+}

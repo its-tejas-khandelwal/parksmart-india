@@ -1,97 +1,218 @@
-{% extends "base.html" %}
-{% block title %}Live Grid — {{ lot.name }}{% endblock %}
-{% block content %}
-<div class="flex flex-wrap items-start justify-between gap-4 mb-6">
-  <div>
-    <a href="{{ url_for('vendor_dashboard') }}" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-2">
-      <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
-    </a>
-    <h1 class="text-2xl font-bold">{{ lot.name }}</h1>
-    <p class="text-sm text-gray-500 dark:text-gray-400">{{ lot.address }}, {{ lot.city }}</p>
-  </div>
+// ═══════════════════════════════════════════════════════════════════
+//   SpotEasy India — Live Auto-Refresh + Browser Notifications
+//   Works for Admin, Vendor, and Customer dashboards
+// ═══════════════════════════════════════════════════════════════════
 
-  <!-- LIVE Badge -->
-  <div class="mb-3">
-    <span id="liveIndicator" class="inline-flex items-center gap-1.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 text-xs font-bold px-3 py-1.5 rounded-full border border-green-200 dark:border-green-700 transition-opacity">
-      <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse inline-block"></span>
-      LIVE &mdash; Auto-refreshing in <span id="refreshCountdown">3s</span>
-    </span>
-  </div>
+var SpotEasyLive = {
+  role: null,
+  userId: null,
+  lastPendingVendors: -1,
+  lastPendingLots: -1,
+  lastActiveBookings: -1,
 
-  <!-- Live Stats -->
-  <div class="flex gap-3">
-    <div class="bento bg-white dark:bg-slate-900 text-center px-4 py-3 min-w-20">
-      <div class="text-xl font-bold text-emerald-600" id="avail2w">{{ lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length }}</div>
-      <div class="text-xs text-gray-500">🛵 Free</div>
-    </div>
-    <div class="bento bg-white dark:bg-slate-900 text-center px-4 py-3 min-w-20">
-      <div class="text-xl font-bold text-blue-600" id="avail4w">{{ lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length }}</div>
-      <div class="text-xs text-gray-500">🚗 Free</div>
-    </div>
-    <div class="bento bg-white dark:bg-slate-900 text-center px-4 py-3 min-w-20">
-      <div class="text-xl font-bold text-red-500" id="occupiedCount">{{ lot.occupied_count }}</div>
-      <div class="text-xs text-gray-500">Occupied</div>
-    </div>
-  </div>
-</div>
+  // ── Request browser notification permission ──────────────────────
+  requestNotifications: function() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  },
 
-<!-- Legend -->
-<div class="flex gap-5 mb-5 text-sm flex-wrap">
-  <span class="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400">
-    <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Available
-  </span>
-  <span class="flex items-center gap-2 font-medium text-red-600 dark:text-red-400">
-    <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> Occupied
-  </span>
-  <span class="text-gray-400 text-xs">Click any slot to toggle status</span>
-  <span class="ml-auto text-xs text-gray-400" id="lastUpdate">Auto-refresh every 3s</span>
-</div>
+  // ── Show browser notification ────────────────────────────────────
+  notify: function(title, body, icon) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      var n = new Notification(title, {
+        body: body,
+        icon: icon || '/static/icons/icon-192.png',
+        badge: '/static/icons/icon-72.png',
+        tag: 'spoteasy-' + Date.now(),
+      });
+      n.onclick = function() { window.focus(); n.close(); };
+      setTimeout(function() { n.close(); }, 6000);
+    }
+  },
 
-<!-- 2W Section -->
-{% set slots_2w = lot.slots|selectattr('slot_type','eq','2w')|list %}
-{% if slots_2w %}
-<div class="mb-6">
-  <h3 class="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-    <span class="text-lg">🛵</span> 2-Wheeler Slots ({{ slots_2w|length }} total)
-  </h3>
-  <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
-    {% for slot in slots_2w %}
-    <button id="slot-{{ slot.id }}" onclick="toggleSlot({{ slot.id }})"
-      data-status="{{ slot.status }}" data-type="{{ slot.slot_type }}"
-      class="slot-btn aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer
-      {% if slot.status=='available' %}slot-available{% else %}slot-occupied{% endif %}">
-      <span class="text-base">{% if slot.status=='available' %}🟢{% else %}🔴{% endif %}</span>
-      <span class="mt-0.5">{{ slot.label }}</span>
-    </button>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
+  // ── Update element text silently ─────────────────────────────────
+  update: function(id, val) {
+    var el = document.getElementById(id);
+    if (el && el.textContent != String(val)) {
+      el.textContent = val;
+      el.style.transition = 'color 0.3s';
+      el.style.color = '#16a34a';
+      setTimeout(function() { el.style.color = ''; }, 800);
+    }
+  },
 
-<!-- 4W Section -->
-{% set slots_4w = lot.slots|selectattr('slot_type','eq','4w')|list %}
-{% if slots_4w %}
-<div class="mb-6">
-  <h3 class="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-    <span class="text-lg">🚗</span> 4-Wheeler Slots ({{ slots_4w|length }} total)
-  </h3>
-  <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
-    {% for slot in slots_4w %}
-    <button id="slot-{{ slot.id }}" onclick="toggleSlot({{ slot.id }})"
-      data-status="{{ slot.status }}" data-type="{{ slot.slot_type }}"
-      class="slot-btn aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer
-      {% if slot.status=='available' %}slot-available{% else %}slot-occupied{% endif %}">
-      <span class="text-base">{% if slot.status=='available' %}🟢{% else %}🔴{% endif %}</span>
-      <span class="mt-0.5">{{ slot.label }}</span>
-    </button>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-{% endblock %}
+  // ── Update badge (pending count) ─────────────────────────────────
+  badge: function(id, count) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (count > 0) {
+      el.textContent = count;
+      el.style.display = 'inline-block';
+    } else {
+      el.style.display = 'none';
+    }
+  },
 
-{% block scripts %}
-<script>
-SpotEasyLive.start({ role: "lot_grid", lotId: {{ lot.id }} });
-</script>
-{% endblock %}
+  // ── ADMIN: Poll every 5 seconds ──────────────────────────────────
+  pollAdmin: function() {
+    var self = this;
+    fetch('/api/admin/stats', {cache: 'no-store'})
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        // Update stats
+        self.update('statTotalUsers',    d.total_users);
+        self.update('statTotalLots',     d.total_lots);
+        self.update('statActiveBookings',d.active_bookings);
+        self.update('statRevenue',       '₹' + Math.round(d.total_revenue));
+
+        // Pending badges
+        self.badge('badgePendingVendors', d.pending_vendors);
+        self.badge('badgePendingLots',    d.pending_lots);
+
+        // Notify if NEW pending vendor appeared
+        if (self.lastPendingVendors >= 0 && d.pending_vendors > self.lastPendingVendors) {
+          var newV = d.new_vendors[0];
+          self.notify(
+            'New Vendor Request!',
+            (newV ? newV.name : 'A vendor') + ' is waiting for approval.',
+          );
+        }
+        // Notify if NEW pending lot appeared
+        if (self.lastPendingLots >= 0 && d.pending_lots > self.lastPendingLots) {
+          var newL = d.new_lots[0];
+          self.notify(
+            'New Lot Pending Approval!',
+            (newL ? newL.name + ', ' + newL.city : 'A lot') + ' needs approval.',
+          );
+        }
+
+        self.lastPendingVendors = d.pending_vendors;
+        self.lastPendingLots    = d.pending_lots;
+      })
+      .catch(function() {});
+  },
+
+  // ── VENDOR: Poll every 3 seconds ─────────────────────────────────
+  pollVendor: function(vid) {
+    var self = this;
+    fetch('/api/vendor/stats/' + vid, {cache: 'no-store'})
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        self.update('statFreeSlots',     d.free_slots);
+        self.update('statOccupied',      d.occupied_slots);
+        self.update('statActiveBookings',d.active_bookings);
+        self.update('statRevenue',       '₹' + Math.round(d.total_revenue));
+
+        // Notify if new booking arrived
+        if (self.lastActiveBookings >= 0 && d.active_bookings > self.lastActiveBookings) {
+          self.notify('New Booking!', 'A customer just booked a slot at your lot.');
+        }
+        self.lastActiveBookings = d.active_bookings;
+
+        // Update individual lot counts
+        if (d.lots) {
+          d.lots.forEach(function(lot) {
+            self.update('lotFree-' + lot.id,     lot.free);
+            self.update('lotOccupied-' + lot.id, lot.occupied);
+          });
+        }
+      })
+      .catch(function() {});
+  },
+
+  // ── CUSTOMER: Poll every 15 seconds ──────────────────────────────
+  pollCustomer: function() {
+    var self = this;
+    fetch('/api/customer/stats', {cache: 'no-store'})
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        self.update('statActive',    d.active || 0);
+        self.update('statCompleted', d.completed || 0);
+        self.update('statTotal',     d.total_bookings || 0);
+        self.update('statSpent',     '₹' + (d.total_spent || 0));
+
+        // Show live dot if active booking
+        var dot = document.getElementById('liveDot');
+        if (dot) dot.style.display = (d.active > 0) ? 'inline-block' : 'none';
+
+        // Notify if booking completed
+        if (self.lastActiveBookings >= 0 &&
+            d.active < self.lastActiveBookings && d.active === 0) {
+          self.notify('Checkout Complete!', 'Your parking session has ended.');
+        }
+        self.lastActiveBookings = d.active || 0;
+      })
+      .catch(function() {});
+  },
+
+  // ── LOT GRID: Poll every 3 seconds ───────────────────────────────
+  pollLotGrid: function(lotId) {
+    var self = this;
+    fetch('/api/lot/' + lotId + '/slots', {cache: 'no-store'})
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var slots = data.slots || data;
+        slots.forEach(function(slot) {
+          var el = document.getElementById('slot-' + slot.id);
+          if (!el) return;
+          var occupied = slot.is_occupied || slot.status === 'occupied';
+          el.className = el.className.replace(/slot-available|slot-occupied/g, '');
+          el.classList.add(occupied ? 'slot-occupied' : 'slot-available');
+          var statusEl = el.querySelector('.slot-status');
+          if (statusEl) statusEl.textContent = occupied ? 'Occupied' : 'Free';
+        });
+        // Update counts
+        var free2w = slots.filter(function(s){return (s.slot_type||s.type)==='2w'&&!s.is_occupied&&s.status!=='occupied';}).length;
+        var free4w = slots.filter(function(s){return (s.slot_type||s.type)==='4w'&&!s.is_occupied&&s.status!=='occupied';}).length;
+        var occ2w  = slots.filter(function(s){return (s.slot_type||s.type)==='2w'&&(s.is_occupied||s.status==='occupied');}).length;
+        var occ4w  = slots.filter(function(s){return (s.slot_type||s.type)==='4w'&&(s.is_occupied||s.status==='occupied');}).length;
+        self.update('avail2w', free2w);
+        self.update('avail4w', free4w);
+        self.update('occ2w',   occ2w);
+        self.update('occ4w',   occ4w);
+
+        // Update countdown
+        var indicator = document.getElementById('liveIndicator');
+        if (indicator) indicator.style.opacity = '1';
+      })
+      .catch(function() {});
+  },
+
+  // ── Start polling based on role ───────────────────────────────────
+  start: function(config) {
+    var self = this;
+    this.role   = config.role;
+    this.userId = config.userId;
+
+    // Request notification permission
+    this.requestNotifications();
+
+    if (config.role === 'admin') {
+      self.pollAdmin();
+      setInterval(function() { self.pollAdmin(); }, 5000);
+    }
+    else if (config.role === 'vendor') {
+      self.pollVendor(config.userId);
+      setInterval(function() { self.pollVendor(config.userId); }, 5000);
+    }
+    else if (config.role === 'customer') {
+      self.pollCustomer();
+      setInterval(function() { self.pollCustomer(); }, 15000);
+    }
+    else if (config.role === 'lot_grid') {
+      // Countdown timer for lot grid
+      var countdown = 3;
+      self.pollLotGrid(config.lotId);
+      setInterval(function() {
+        countdown--;
+        var el = document.getElementById('refreshCountdown');
+        if (el) el.textContent = countdown + 's';
+        if (countdown <= 0) {
+          countdown = 3;
+          self.pollLotGrid(config.lotId);
+        }
+      }, 1000);
+    }
+  }
+};

@@ -1,117 +1,156 @@
 {% extends "base.html" %}
-{% block title %}Find Parking — SpotEasy{% endblock %}
+{% block title %}Terms of Use — SpotEasy{% endblock %}
 {% block content %}
-<div class="mb-6">
-  <h1 class="text-3xl font-bold">Find Parking</h1>
-  <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">{{ lots|length }} active parking lots near you</p>
-</div>
+<div class="max-w-3xl mx-auto animate-fade-in">
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-  <!-- Leaflet Map -->
-  <div class="bento bg-white dark:bg-slate-900 p-0 overflow-hidden rounded-2xl" style="height:420px;">
-    <div id="map" class="w-full h-full rounded-2xl"></div>
+  <div class="mb-8">
+    <h1 class="text-4xl font-black text-gray-900 dark:text-white">Terms of Use</h1>
+    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">
+      Last updated: March 2026 &nbsp;·&nbsp; SpotEasy India
+    </p>
   </div>
 
-  <!-- Lot Cards -->
-  <div class="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-    {% if lots %}
-      {% for lot in lots %}
-      <div class="bento bg-white dark:bg-slate-900 hover:shadow-xl transition border border-gray-100 dark:border-slate-800">
-        <div class="flex justify-between items-start mb-2">
-          <h3 class="font-bold text-lg leading-tight">{{ lot.name }}</h3>
-          <span class="shrink-0 ml-2 text-xs font-bold px-2 py-1 rounded-full
-            {% if lot.available_count > 0 %}bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300
-            {% else %}bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300{% endif %}">
-            {% if lot.available_count > 0 %}{{ lot.available_count }} free{% else %}Full{% endif %}
-          </span>
-        </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
-          <i data-lucide="map-pin" class="w-3 h-3 inline mr-1"></i>{{ lot.address }}, {{ lot.city }}
-        </p>
+  <div class="space-y-5">
 
-        <!-- 2W/4W counts -->
-        <div class="grid grid-cols-2 gap-2 mb-3">
-          <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl px-3 py-2 flex items-center gap-2">
-            <span class="text-lg">🛵</span>
-            <div>
-              <div class="font-bold text-sm text-amber-700 dark:text-amber-300">
-                {{ lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length }} free
-              </div>
-              <div class="text-xs text-gray-500">2-Wheeler · ₹{{ lot.rate_2w }}/hr</div>
-            </div>
-          </div>
-          <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl px-3 py-2 flex items-center gap-2">
-            <span class="text-lg">🚗</span>
-            <div>
-              <div class="font-bold text-sm text-blue-700 dark:text-blue-300">
-                {{ lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length }} free
-              </div>
-              <div class="text-xs text-gray-500">4-Wheeler · ₹{{ lot.rate_4w }}/hr</div>
-            </div>
-          </div>
+    <div class="card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-900/40 flex items-center justify-center shrink-0">
+          <span class="text-lg">👋</span>
         </div>
-
-        <!-- Progress bar -->
-        <div class="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-1.5 mb-4">
-          {% set pct = (lot.available_count / lot.total_slots * 100)|round|int if lot.total_slots > 0 else 0 %}
-          <div class="bg-emerald-500 h-1.5 rounded-full transition-all" style="width:{{ pct }}%"></div>
-        </div>
-
-        {% if current_user.is_authenticated and current_user.role == 'customer' %}
-          {% if lot.available_count > 0 %}
-          <a href="{{ url_for('book_slot', lid=lot.id) }}"
-             class="block w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition">
-            Book Now →
-          </a>
-          {% else %}
-          <button disabled class="block w-full text-center bg-gray-200 dark:bg-slate-700 text-gray-500 text-sm font-semibold py-3 rounded-xl cursor-not-allowed">
-            Lot Full
-          </button>
-          {% endif %}
-        {% elif not current_user.is_authenticated %}
-        <a href="{{ url_for('login') }}" class="block w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition">
-          Login to Book →
-        </a>
-        {% endif %}
+        <h2 class="font-black text-lg text-gray-900 dark:text-white">1. Welcome to SpotEasy</h2>
       </div>
-      {% endfor %}
-    {% else %}
-    <div class="text-center py-16 text-gray-400">
-      <i data-lucide="map-pin-off" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
-      <p class="font-medium">No active parking lots yet.</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+        SpotEasy India ("SpotEasy", "we", "us") is a smart parking platform that connects
+        parking lot owners (Vendors) with drivers (Customers) across Indian cities.
+        By registering or using our platform, you agree to these Terms of Use.
+        If you do not agree, please do not use our services.
+      </p>
     </div>
-    {% endif %}
+
+    <div class="card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+          <span class="text-lg">👤</span>
+        </div>
+        <h2 class="font-black text-lg text-gray-900 dark:text-white">2. User Accounts</h2>
+      </div>
+      <ul class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2">
+        <li>• You must be at least <strong>18 years old</strong> to register.</li>
+        <li>• You must provide accurate and complete information during registration.</li>
+        <li>• You are responsible for keeping your password secure.</li>
+        <li>• One person may not create multiple accounts.</li>
+        <li>• SpotEasy reserves the right to suspend accounts that violate these terms.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-yellow-100 dark:bg-yellow-900/40 flex items-center justify-center shrink-0">
+          <span class="text-lg">🅿️</span>
+        </div>
+        <h2 class="font-black text-lg text-gray-900 dark:text-white">3. Booking & Cancellation</h2>
+      </div>
+      <ul class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2">
+        <li>• Bookings are confirmed instantly upon selection of a slot.</li>
+        <li>• <strong>Grace Period:</strong> If you exit within 15 minutes of entry, no charge applies.</li>
+        <li>• Parking charges are calculated based on actual duration at the applicable hourly rate.</li>
+        <li>• All amounts are rounded to the nearest rupee.</li>
+        <li>• SpotEasy is not responsible for unavailability of slots due to technical issues.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+          <span class="text-lg">💳</span>
+        </div>
+        <h2 class="font-black text-lg text-gray-900 dark:text-white">4. Payments</h2>
+      </div>
+      <ul class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2">
+        <li>• Payments can be made via <strong>Cash</strong> or <strong>UPI</strong> at the time of checkout.</li>
+        <li>• UPI payments are processed directly between the customer and the parking lot owner.</li>
+        <li>• SpotEasy does not store any payment card information.</li>
+        <li>• In case of payment disputes, please contact the parking lot owner directly.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+          <span class="text-lg">🔒</span>
+        </div>
+        <h2 class="font-black text-lg text-gray-900 dark:text-white">5. Privacy & Data</h2>
+      </div>
+      <ul class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2">
+        <li>• We collect your name, email, phone number, and vehicle details to provide our service.</li>
+        <li>• We do not sell your personal data to third parties.</li>
+        <li>• Your booking history is stored securely on our servers.</li>
+        <li>• You may request deletion of your account data by contacting us.</li>
+        <li>• We use cookies to maintain your login session.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+          <span class="text-lg">🏢</span>
+        </div>
+        <h2 class="font-black text-lg text-gray-900 dark:text-white">6. Vendor Responsibilities</h2>
+      </div>
+      <ul class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2">
+        <li>• Vendors must provide accurate information about their parking lots.</li>
+        <li>• Vendors are responsible for maintaining their lot and ensuring slot availability.</li>
+        <li>• Vendors must honour confirmed bookings shown by a valid QR pass.</li>
+        <li>• SpotEasy may remove vendor listings that receive repeated complaints.</li>
+        <li>• All lots must comply with local municipal and traffic regulations.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center shrink-0">
+          <span class="text-lg">⚠️</span>
+        </div>
+        <h2 class="font-black text-lg text-gray-900 dark:text-white">7. Limitation of Liability</h2>
+      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+        SpotEasy provides a technology platform to connect customers and vendors.
+        We are not liable for vehicle damage, theft, accidents, or any incidents
+        occurring within a parking lot. The parking lot owner is solely responsible
+        for the physical premises and security of vehicles parked therein.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+          <span class="text-lg">📧</span>
+        </div>
+        <h2 class="font-black text-lg text-gray-900 dark:text-white">8. Contact Us</h2>
+      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+        For any queries, complaints, or support, please contact us at:<br/>
+        <strong class="text-gray-800 dark:text-gray-200">admin@spoteasy.in</strong><br/>
+        We aim to respond within 2 business days.
+      </p>
+    </div>
+
+    <!-- Accept & Go Back -->
+    <div class="card bg-gradient-to-r from-green-600 to-emerald-600 border-0 text-white text-center">
+      <p class="font-bold text-lg mb-1">Ready to park smart? 🅿️</p>
+      <p class="text-green-100 text-sm mb-4">By registering you agree to these terms.</p>
+      <div class="flex justify-center gap-3 flex-wrap">
+        <a href="{{ url_for('register') }}"
+           style="background:white;color:#16a34a;font-weight:800;padding:10px 24px;border-radius:12px;text-decoration:none;font-size:14px;">
+          ✅ I Agree — Register
+        </a>
+        <a href="{{ url_for('index') }}"
+           style="background:rgba(255,255,255,0.2);color:white;font-weight:700;padding:10px 24px;border-radius:12px;text-decoration:none;font-size:14px;">
+          ← Back to Home
+        </a>
+      </div>
+    </div>
+
   </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-const lotsData = {{ lots_json | tojson | safe }};
-const map = L.map('map').setView([22.9734, 78.6569], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  {attribution:'© OpenStreetMap contributors'}).addTo(map);
-
-if (lotsData.length > 0) {
-  const bounds = [];
-  lotsData.forEach(lot => {
-    const color = lot.available > 0 ? '#10b981' : '#ef4444';
-    L.circleMarker([lot.lat, lot.lng], {
-      radius:13, fillColor:color, color:'#fff', weight:2, fillOpacity:0.9
-    }).addTo(map)
-      .bindPopup(`<b>${lot.name}</b><br>${lot.city}<br>🟢 ${lot.available} free of ${lot.total}`);
-    bounds.push([lot.lat, lot.lng]);
-  });
-  if (bounds.length) map.fitBounds(bounds, {padding:[50,50]});
-}
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(p => {
-    L.marker([p.coords.latitude, p.coords.longitude])
-      .addTo(map).bindPopup('📍 You are here').openPopup();
-    map.setView([p.coords.latitude, p.coords.longitude], 13);
-  });
-}
-</script>
 {% endblock %}
