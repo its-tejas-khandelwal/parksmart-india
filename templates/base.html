@@ -140,6 +140,7 @@ footer{position:relative;z-index:1;background:rgba(13,17,23,0.8);border-top:1px 
         {% else %}
           <a href="{{ url_for('lots_list') }}" class="nav-link">Find Parking</a>
           <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+          <button id="themeToggle" onclick="toggleTheme()" style="background:none;border:1px solid var(--border-medium);color:var(--text-secondary);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;transition:all 0.2s;" title="Toggle theme">🌙</button>
           <a href="{{ url_for('register') }}" class="btn-primary btn-sm" style="margin-left:4px;">Register Free</a>
         {% endif %}
       </div>
