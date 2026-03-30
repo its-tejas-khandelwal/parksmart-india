@@ -1,445 +1,532 @@
-<!DOCTYPE html>
-<html lang="en" id="htmlRoot">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>{% block title %}SpotEasy — Smart Parking{% endblock %}</title>
-<link rel="manifest" href="/static/manifest.json"/>
-<meta name="theme-color" content="#16a34a"/>
-<meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-title" content="SpotEasy"/>
-<link rel="apple-touch-icon" href="/static/icons/icon-192.png"/>
-<link rel="icon" type="image/png" href="/static/icons/icon-96.png"/>
+{% extends "base.html" %}
+{% block title %}SpotEasy India — Smart Parking{% endblock %}
 
-<!-- Catch PWA install prompt as early as possible -->
-<script>
-window._dPrompt = null;
-window.addEventListener('beforeinstallprompt', function(e) {
-  e.preventDefault();
-  window._dPrompt = e;
-});
-</script>
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      colors: {
-        dark: { 800:'#1a1f2e', 900:'#0f1117' }
-      }
-    }
-  }
-}
-</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-
+{% block head_extra %}
 <style>
-* { font-family: 'Inter', sans-serif; }
-::-webkit-scrollbar { width:5px; }
-::-webkit-scrollbar-thumb { background:#22c55e55; border-radius:99px; }
-
-.card {
-  background: white;
-  border-radius: 1.25rem;
-  border: 1px solid #f0f0f0;
-  padding: 1.5rem;
-  transition: all 0.25s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+:root{
+  --bg:#060912;
+  --card:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.09);
+  --text:#f1f5f9;
+  --muted:#94a3b8;
+  --green:#22c55e;
+  --indigo:#6366f1;
+  --cyan:#22d3ee;
+  --amber:#f59e0b;
 }
-.card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
-.dark .card { background:#1a1f2e; border-color:#2d3548; }
-.dark .card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body.index-page{background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;overflow-x:hidden}
 
-.navbar {
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0,0,0,0.07);
+/* Aurora */
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0}
+.abl{position:absolute;border-radius:50%;filter:blur(90px);opacity:0.4}
+.abl.a1{width:600px;height:600px;background:radial-gradient(circle,#6366f1,transparent 70%);top:-200px;left:-150px;animation:af1 16s ease-in-out infinite}
+.abl.a2{width:500px;height:500px;background:radial-gradient(circle,#22d3ee,transparent 70%);top:35%;right:-150px;animation:af2 19s ease-in-out infinite}
+.abl.a3{width:450px;height:450px;background:radial-gradient(circle,#22c55e,transparent 70%);bottom:-100px;left:25%;animation:af3 13s ease-in-out infinite}
+.abl.a4{width:350px;height:350px;background:radial-gradient(circle,#a855f7,transparent 70%);top:15%;left:45%;animation:af1 21s ease-in-out infinite reverse}
+@keyframes af1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(50px,70px) scale(1.08)}}
+@keyframes af2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-60px,-40px) scale(0.94)}}
+@keyframes af3{0%,100%{transform:translate(0,0) scale(0.96)}50%{transform:translate(35px,-55px) scale(1.08)}}
+
+/* Navbar — handled by base.html, override for transparency */
+.index-page .navbar-custom{
+  background:transparent!important;
+  border-bottom:none!important;
+  backdrop-filter:none!important;
 }
-.dark .navbar {
-  background: rgba(10,13,20,0.92);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+.index-page .navbar-custom.nav-solid{
+  background:rgba(6,9,18,0.88)!important;
+  backdrop-filter:blur(16px)!important;
+  -webkit-backdrop-filter:blur(16px)!important;
+  border-bottom:1px solid rgba(255,255,255,0.07)!important;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg,#16a34a,#22c55e);
-  color: white;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(34,197,94,0.35);
-  transition: all 0.2s;
+/* Hero */
+.hero{
+  position:relative;z-index:1;
+  min-height:100svh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:100px 20px 60px;
 }
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(34,197,94,0.45); }
-
-.inp {
-  width: 100%;
-  border: 2px solid #e5e7eb;
-  background: white;
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  transition: border-color 0.2s;
-  outline: none;
+.hero-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+  border-radius:99px;padding:7px 18px;
+  font-size:0.82rem;font-weight:500;color:var(--muted);
+  margin-bottom:28px;
+  animation:fu 0.6s 0.1s both;
 }
-.inp:focus { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
-.dark .inp { background:#1a1f2e; border-color:#2d3548; color:#f1f5f9; }
-.dark .inp:focus { border-color:#4ade80; }
+.live-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--green);
+  animation:pdot 2s ease-in-out infinite;flex-shrink:0;
+}
+@keyframes pdot{
+  0%{box-shadow:0 0 0 0 rgba(34,197,94,0.6)}
+  70%{box-shadow:0 0 0 10px rgba(34,197,94,0)}
+  100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
+}
+.hero h1{
+  font-family:'Syne',sans-serif;
+  font-size:clamp(2.8rem,7vw,5.5rem);
+  font-weight:800;line-height:1.08;
+  margin-bottom:22px;
+  background:linear-gradient(135deg,#f1f5f9 0%,#818cf8 28%,#22d3ee 58%,#22c55e 100%);
+  background-size:300% 300%;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:fu 0.6s 0.25s both,gflow 7s ease-in-out infinite;
+}
+@keyframes gflow{
+  0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}
+}
+.hero-sub{
+  font-size:clamp(0.95rem,2vw,1.15rem);color:var(--muted);
+  max-width:520px;margin:0 auto 36px;line-height:1.75;
+  animation:fu 0.6s 0.4s both;
+}
+.hero-btns{
+  display:flex;gap:12px;justify-content:center;flex-wrap:wrap;
+  margin-bottom:36px;animation:fu 0.6s 0.55s both;
+}
+.btn{
+  position:relative;overflow:hidden;
+  padding:13px 30px;border-radius:99px;
+  font-family:'DM Sans',sans-serif;font-size:0.92rem;font-weight:600;
+  text-decoration:none;display:inline-block;border:none;cursor:pointer;
+  transition:transform 0.2s,opacity 0.2s;white-space:nowrap;
+}
+.btn:hover{transform:translateY(-2px)}
+.btn-cta{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff}
+.btn-ghost{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:var(--text)}
+.btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);
+  transform:translateX(-100%);animation:shim 2.5s infinite;
+}
+.btn-ghost::after{animation-delay:1.2s}
+@keyframes shim{0%{transform:translateX(-100%)}65%,100%{transform:translateX(100%)}}
 
-.slot-available { background: linear-gradient(135deg,#dcfce7,#bbf7d0); border: 2px solid #22c55e; color:#15803d; }
-.slot-occupied  { background: linear-gradient(135deg,#fee2e2,#fecaca); border: 2px solid #ef4444; color:#991b1b; }
-.dark .slot-available { background:rgba(34,197,94,0.2); border-color:#4ade80; color:#86efac; }
-.dark .slot-occupied  { background:rgba(239,68,68,0.2); border-color:#f87171; color:#fca5a5; }
+/* Live Stats Bar */
+.stats-bar{
+  display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  border-radius:20px;padding:14px 24px;
+  animation:fu 0.6s 0.7s both;
+  max-width:680px;width:100%;
+}
+.stat-item{
+  display:flex;align-items:center;gap:8px;
+  padding:4px 20px;
+  border-right:1px solid rgba(255,255,255,0.1);
+  white-space:nowrap;
+}
+.stat-item:last-child{border-right:none}
+.stat-icon{font-size:1.1rem}
+.stat-val{font-size:1.1rem;font-weight:700;color:var(--text)}
+.stat-lbl{font-size:0.78rem;color:var(--muted);line-height:1.2}
+.counting{animation:countIn 0.5s ease-out}
+@keyframes countIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 
-@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
-@keyframes scaleIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
-@keyframes installBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+/* Sections */
+.sp{position:relative;z-index:1;padding:80px 20px;max-width:1100px;margin:0 auto}
+.slabel{font-size:0.7rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--green);margin-bottom:12px}
+.stitle{font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;margin-bottom:12px;line-height:1.2}
+.ssub{font-size:0.95rem;color:var(--muted);max-width:480px;line-height:1.75;margin-bottom:44px}
 
-.animate-fade-in  { animation: fadeUp 0.4s ease both; }
-.animate-scale-in { animation: scaleIn 0.3s ease both; }
-.animate-on-scroll { opacity:0; transform:translateY(20px); transition:opacity 0.5s,transform 0.5s; }
+/* Glass card */
+.gc{
+  background:var(--card);border:1px solid var(--border);border-radius:24px;padding:32px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:border-color 0.3s,box-shadow 0.3s;
+}
+.gc:hover{border-color:rgba(255,255,255,0.18);box-shadow:0 0 40px rgba(99,102,241,0.08)}
 
-#installFloatBtn { animation: installBounce 3s ease-in-out infinite; }
+/* Bento */
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.bento-wide{grid-column:1/-1;display:grid;grid-template-columns:1.1fr 0.9fr;gap:28px;align-items:center}
 
-@media print { nav, footer, #installFloatBtn, #installTopBanner { display:none!important; } }
+.role-icon{font-size:2.8rem;margin-bottom:14px;display:block;line-height:1}
+.rtitle{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:10px}
+.rdesc{font-size:0.875rem;color:var(--muted);line-height:1.7;margin-bottom:18px}
+.rcta{display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;font-weight:600;text-decoration:none;transition:gap 0.25s}
+.rcta:hover{gap:10px}
+.rcta.g{color:var(--green)}.rcta.i{color:#818cf8}.rcta.a{color:var(--amber)}
+
+.flow-inner{background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.14);border-radius:14px;padding:20px}
+.flow-head{font-size:0.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.fl{display:flex;align-items:center;gap:10px;font-size:0.83rem;margin-bottom:11px;color:var(--muted)}
+.fl:last-child{margin-bottom:0}
+.fn{background:rgba(34,197,94,0.18);color:var(--green);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.68rem;flex-shrink:0}
+
+/* Reveal */
+.reveal{opacity:0;transform:translateY(36px);transition:opacity 0.65s cubic-bezier(.25,.8,.25,1),transform 0.65s cubic-bezier(.25,.8,.25,1)}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* Feature badges */
+.badges-wrap{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.fbadge{
+  display:inline-flex;align-items:center;gap:12px;
+  background:rgba(255,255,255,0.045);border:1px solid var(--border);
+  border-radius:16px;padding:14px 22px;
+  animation:fuBadge 3s ease-in-out infinite;
+}
+.fbadge:nth-child(1){animation-delay:0s}
+.fbadge:nth-child(2){animation-delay:0.5s}
+.fbadge:nth-child(3){animation-delay:1s}
+.fbadge:nth-child(4){animation-delay:1.5s}
+@keyframes fuBadge{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.bico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.bn{font-size:0.9rem;font-weight:600;margin-bottom:2px}
+.bsub{font-size:0.76rem;color:var(--muted)}
+
+/* Steps */
+.steps-wrap{display:grid;grid-template-columns:repeat(3,1fr);position:relative;gap:0}
+.steps-line{position:absolute;top:44px;left:calc(16.66% + 28px);right:calc(16.66% + 28px);height:2px;background:linear-gradient(90deg,var(--indigo),var(--cyan),var(--green));background-size:200%;animation:lsweep 3s linear infinite;border-radius:2px;z-index:0}
+@keyframes lsweep{0%{background-position:0%}100%{background-position:200%}}
+.step{text-align:center;padding:0 24px;position:relative;z-index:1}
+.step-c{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:2rem;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);position:relative}
+.step-n{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--indigo),var(--cyan));font-size:0.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;color:#fff}
+.step h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:8px}
+.step p{font-size:0.82rem;color:var(--muted);line-height:1.65}
+
+/* CTA strip */
+.cta-strip{background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(34,197,94,0.07));border:1px solid rgba(99,102,241,0.22);border-radius:24px;padding:56px 40px;text-align:center}
+
+/* Footer handled by base.html */
+
+/* PWA banner */
+#pwa-banner{
+  display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  z-index:9999;min-width:300px;max-width:460px;width:calc(100% - 32px);
+  animation:slideUp 0.5s ease-out;
+}
+@keyframes slideUp{from{transform:translateX(-50%) translateY(100px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+#pwa-banner .pwa-inner{
+  display:flex;align-items:center;gap:14px;
+  background:rgba(8,12,24,0.95);border:1px solid rgba(255,255,255,0.12);
+  border-radius:18px;padding:14px 18px;
+  backdrop-filter:blur(24px);
+}
+#pwa-banner img{width:42px;height:42px;border-radius:10px;flex-shrink:0}
+#pwa-banner .pt h4{font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:2px}
+#pwa-banner .pt p{font-size:0.72rem;color:var(--muted)}
+#pwa-banner .pa{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+#pwa-install-btn{background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;padding:8px 16px;border-radius:99px;font-size:0.78rem;font-weight:600;cursor:pointer}
+#pwa-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px}
+
+/* Animations */
+@keyframes fu{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Mobile responsive ────────────────────────────── */
+@media(max-width:768px){
+  .hero{padding:90px 16px 48px;min-height:100svh}
+  .hero-btns{flex-direction:column;align-items:stretch;padding:0 16px}
+  .hero-btns .btn{text-align:center}
+  .stats-bar{border-radius:16px;padding:12px 8px;gap:0}
+  .stat-item{padding:4px 12px;flex-direction:column;align-items:center;gap:2px}
+  .stat-item:not(:last-child){border-right:1px solid rgba(255,255,255,0.08)}
+  .stat-val{font-size:1rem}
+  .stat-lbl{font-size:0.68rem;text-align:center}
+  .sp{padding:48px 16px}
+  .bento{grid-template-columns:1fr}
+  .bento-wide{grid-column:auto;grid-template-columns:1fr;gap:16px}
+  .flow-inner{display:none}
+  .steps-wrap{grid-template-columns:1fr;gap:28px}
+  .steps-line{display:none}
+  .badges-wrap{gap:10px}
+  .fbadge{padding:12px 16px;gap:10px;animation:none}
+  .cta-strip{padding:36px 20px;border-radius:20px}
+  .gc{padding:24px 20px;border-radius:20px}
+}
+@media(max-width:480px){
+  .hero h1{font-size:2.4rem}
+  .stats-bar{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:10px 4px}
+  .stat-item{min-width:72px}
+}
 </style>
+{% endblock %}
 
-<script>
-// Apply saved theme before page renders (prevents flash)
-(function(){
-  var t = localStorage.getItem('se_theme') ||
-    (window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
-  if (t === 'dark') document.documentElement.classList.add('dark');
-})();
-</script>
-</head>
+{% block page_content %}
+<body class="index-page">
 
-<body class="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-
-<!-- NAVBAR -->
-<nav class="navbar sticky top-0 z-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-
-    <!-- Logo -->
-    <a href="/" class="flex items-center gap-2.5 group">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-        <i data-lucide="parking-circle" class="w-5 h-5 text-white"></i>
-      </div>
-      <div class="flex flex-col leading-none">
-        <span class="font-black text-lg text-gray-900 dark:text-white">SpotEasy</span>
-        <span class="text-xs text-green-600 dark:text-green-400 font-semibold hidden sm:block">India 🇮🇳</span>
-      </div>
-    </a>
-
-    <!-- Nav links -->
-    <div class="flex items-center gap-1 sm:gap-2">
-      {% if current_user.is_authenticated %}
-
-        <!-- User badge -->
-        <div class="hidden sm:flex items-center gap-2 bg-gray-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl mr-1">
-          <div class="w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold">{{ current_user.name[0].upper() }}</div>
-          <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ current_user.name.split()[0] }}</span>
-          <span class="text-xs px-1.5 py-0.5 rounded-md font-bold
-            {% if current_user.role=='admin' %}bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300
-            {% elif current_user.role=='vendor' %}bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300
-            {% else %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300{% endif %}">
-            {{ current_user.role }}
-          </span>
-        </div>
-
-        {% if current_user.role == 'customer' %}
-          <a href="{{ url_for('customer_dashboard') }}" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-green-600 transition-all">
-            <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
-          </a>
-          <a href="{{ url_for('lots_list') }}" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-green-600 transition-all">
-            <i data-lucide="map-pin" class="w-4 h-4"></i> Find Parking
-          </a>
-          <a href="{{ url_for('account') }}" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-green-600 transition-all">
-            <i data-lucide="user-circle" class="w-4 h-4"></i> Profile
-          </a>
-
-        {% elif current_user.role == 'vendor' %}
-          <a href="{{ url_for('vendor_dashboard') }}" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-green-600 transition-all">
-            <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
-          </a>
-          <a href="{{ url_for('add_lot') }}" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-green-600 transition-all">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i> Add Lot
-          </a>
-          <a href="{{ url_for('account') }}" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-green-600 transition-all">
-            <i data-lucide="user-circle" class="w-4 h-4"></i> Profile
-          </a>
-
-        {% elif current_user.role == 'admin' %}
-          <a href="{{ url_for('admin_dashboard') }}" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-green-600 transition-all">
-            <i data-lucide="shield-check" class="w-4 h-4"></i> Admin
-          </a>
-          <a href="{{ url_for('admin_db_view') }}" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-green-600 transition-all">
-            <i data-lucide="database" class="w-4 h-4"></i> DB
-          </a>
-        {% endif %}
-
-        <a href="{{ url_for('logout') }}" class="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
-          <i data-lucide="log-out" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">Logout</span>
-        </a>
-
-      {% else %}
-        <a href="{{ url_for('login') }}" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all">Login</a>
-        <a href="{{ url_for('register') }}" class="btn-primary text-sm px-4 py-2 rounded-xl">Register</a>
-      {% endif %}
-
-      <!-- Dark/Light toggle -->
-      <button onclick="toggleTheme()" class="w-9 h-9 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all" aria-label="Toggle theme">
-        <i data-lucide="sun" class="w-4 h-4 text-amber-500 dark:hidden"></i>
-        <i data-lucide="moon" class="w-4 h-4 text-indigo-400 hidden dark:block"></i>
-      </button>
-    </div>
-  </div>
-</nav>
-
-<!-- FLASH MESSAGES -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-  <div class="max-w-7xl mx-auto px-4 mt-4 space-y-2">
-    {% for category, message in messages %}
-    <div class="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold
-      {% if category=='danger' %}bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800
-      {% elif category=='success' %}bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800
-      {% elif category=='warning' %}bg-yellow-50 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800
-      {% else %}bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800{% endif %}">
-      <i data-lucide="{% if category=='danger' %}alert-circle{% elif category=='success' %}check-circle-2{% else %}info{% endif %}" class="w-4 h-4 shrink-0"></i>
-      {{ message }}
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-{% endwith %}
-
-<!-- MAIN CONTENT -->
-<main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-  {% block content %}{% endblock %}
-</main>
-
-<!-- FOOTER -->
-<footer class="border-t border-gray-100 dark:border-slate-800 mt-16 py-6">
-  <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-400">
-    <div class="flex items-center gap-2">
-      <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-        <i data-lucide="parking-circle" class="w-3 h-3 text-white"></i>
-      </div>
-      <span class="font-semibold">SpotEasy India &copy; 2026</span>
-      <a href="/terms" class="hover:text-green-500 transition-colors ml-2">Terms</a>
-    </div>
-    <span class="text-green-500 font-mono text-xs" id="footerClock"></span>
-  </div>
-</footer>
-
-<!-- INSTALL APP: Floating button (mobile) -->
-<div id="installFloatBtn" style="display:block;position:fixed;bottom:20px;right:16px;z-index:998;">
-  <button onclick="doInstall()"
-    style="display:flex;flex-direction:column;align-items:center;gap:3px;background:linear-gradient(135deg,#16a34a,#22c55e);color:white;border:none;border-radius:20px;padding:13px 16px;font-weight:800;font-size:11px;cursor:pointer;box-shadow:0 8px 28px rgba(22,163,74,0.55);">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="7 10 12 15 17 10"/>
-      <line x1="12" y1="15" x2="12" y2="3"/>
-    </svg>
-    Install<br/>App
-  </button>
-  <button onclick="hideInstall()"
-    style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:white;border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;font-weight:900;display:flex;align-items:center;justify-content:center;">&#x2715;</button>
+<!-- Aurora -->
+<div class="aurora">
+  <div class="abl a1"></div>
+  <div class="abl a2"></div>
+  <div class="abl a3"></div>
+  <div class="abl a4"></div>
 </div>
 
-<!-- INSTALL APP: Top banner (desktop/tablet) -->
-<div id="installTopBanner" style="display:block;position:fixed;top:64px;left:0;right:0;z-index:997;background:linear-gradient(135deg,#14532d,#166534);border-bottom:1px solid rgba(34,197,94,0.3);padding:10px 20px;">
-  <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <img src="/static/icons/icon-72.png" style="width:36px;height:36px;border-radius:10px;"/>
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-tag">
+    <span class="live-dot"></span>
+    Live — Smart Parking Platform for India
+  </div>
+
+  <h1>Park Smart.<br>Save Time.</h1>
+
+  <p class="hero-sub">
+    Find, book and manage parking across Indian cities.<br>
+    Digital QR pass, UPI payments, real-time slot tracking.
+  </p>
+
+  <div class="hero-btns">
+    <a href="{{ url_for('lots_list') }}" class="btn btn-cta">Find Parking</a>
+    <a href="{{ url_for('register') }}" class="btn btn-ghost">Register Free →</a>
+  </div>
+
+  <!-- Live Stats Bar — populated by JS from API -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-item">
+      <div class="stat-icon">🟢</div>
       <div>
-        <span style="color:white;font-weight:800;font-size:14px;">Install SpotEasy App</span>
-        <span style="color:#86efac;font-size:12px;margin-left:8px;">Free &middot; Works Offline &middot; No App Store needed</span>
+        <div class="stat-val" id="statLots">{{ total_lots or '—' }}</div>
+        <div class="stat-lbl">Active Lots</div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button onclick="doInstall()" style="background:#16a34a;color:white;border:none;border-radius:10px;padding:8px 18px;font-weight:800;font-size:13px;cursor:pointer;">&#128242; Install Free</button>
-      <button onclick="hideInstall()" style="background:rgba(255,255,255,0.12);color:#86efac;border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:8px 12px;font-size:13px;cursor:pointer;">&#x2715;</button>
+    <div class="stat-item">
+      <div class="stat-icon">⚡</div>
+      <div>
+        <div class="stat-val" id="statSlots">{{ total_slots or '—' }}</div>
+        <div class="stat-lbl">Total Slots</div>
+      </div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-icon">🟩</div>
+      <div>
+        <div class="stat-val" id="statFree">—</div>
+        <div class="stat-lbl">Free Now</div>
+      </div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-icon">🏙️</div>
+      <div>
+        <div class="stat-val" id="statCities">{{ city_count or '—' }}</div>
+        <div class="stat-lbl">Cities</div>
+      </div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-icon">🎯</div>
+      <div>
+        <div class="stat-val">15 Min</div>
+        <div class="stat-lbl">Free Grace</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Role Cards -->
+<div class="sp" style="padding-top:0">
+  <p class="slabel">Three Roles</p>
+  <h2 class="stitle">Built for everyone<br>in the parking ecosystem</h2>
+  <p class="ssub">One platform, three powerful dashboards — all talking to each other in real time.</p>
+
+  <div class="bento">
+    <!-- Customer wide card -->
+    <div class="gc bento-wide reveal tilt-card">
+      <div>
+        <span class="role-icon" style="filter:drop-shadow(0 0 20px rgba(34,197,94,0.65))">🚗</span>
+        <div class="rtitle">Customer</div>
+        <p class="rdesc">Find available parking on an interactive map, book a slot in seconds, get a digital QR pass and enjoy the 15-minute grace period free of charge. UPI or cash payment at exit.</p>
+        <a href="{{ url_for('register') }}" class="rcta g">Start Parking →</a>
+      </div>
+      <div class="flow-inner">
+        <div class="flow-head">Customer Flow</div>
+        <div class="fl"><span class="fn">1</span>Find parking on map</div>
+        <div class="fl"><span class="fn">2</span>Book slot — auto assigned</div>
+        <div class="fl"><span class="fn">3</span>Show QR at entry gate</div>
+        <div class="fl"><span class="fn">4</span>Pay UPI or Cash at exit</div>
+        <div class="fl"><span class="fn">5</span>Slot freed — done!</div>
+      </div>
+    </div>
+
+    <!-- Vendor -->
+    <div class="gc reveal tilt-card" style="transition-delay:0.1s">
+      <span class="role-icon" style="filter:drop-shadow(0 0 20px rgba(99,102,241,0.7))">🏢</span>
+      <div class="rtitle">Parking Owner</div>
+      <p class="rdesc">Add your lot, set 2W and 4W rates, watch a live slot grid update every 3 seconds. Get instant email alerts for every new booking. Track revenue live.</p>
+      <a href="{{ url_for('register') }}" class="rcta i">Register Your Lot →</a>
+    </div>
+
+    <!-- Admin -->
+    <div class="gc reveal tilt-card" style="transition-delay:0.2s">
+      <span class="role-icon" style="filter:drop-shadow(0 0 20px rgba(245,158,11,0.7))">🛡️</span>
+      <div class="rtitle">Super Admin</div>
+      <p class="rdesc">Approve vendors and lots, view the entire database, export CSV reports, and send notifications. Full platform control from one dashboard.</p>
+      <a href="{{ url_for('login') }}" class="rcta a">Admin Login →</a>
+    </div>
+  </div>
+</div>
+
+<!-- Feature Badges -->
+<div class="sp" style="padding-top:0;text-align:center">
+  <p class="slabel">Platform Features</p>
+  <h2 class="stitle">Everything built in</h2>
+
+  <div class="badges-wrap reveal">
+    <div class="fbadge">
+      <div class="bico" style="background:rgba(34,197,94,0.14)">🎫</div>
+      <div><div class="bn">Digital QR Pass</div><div class="bsub">Entry & exit with QR</div></div>
+    </div>
+    <div class="fbadge">
+      <div class="bico" style="background:rgba(99,102,241,0.14)">📱</div>
+      <div><div class="bn">PWA Mobile App</div><div class="bsub">Install without App Store</div></div>
+    </div>
+    <div class="fbadge">
+      <div class="bico" style="background:rgba(245,158,11,0.14)">💳</div>
+      <div><div class="bn">UPI & Cash</div><div class="bsub">GPay, PhonePe, Paytm</div></div>
+    </div>
+    <div class="fbadge">
+      <div class="bico" style="background:rgba(34,211,238,0.14)">⏱️</div>
+      <div><div class="bn">15 Min Free Grace</div><div class="bsub">Zero charge short visits</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- How It Works -->
+<div class="sp">
+  <p class="slabel">How It Works</p>
+  <h2 class="stitle">Parked in 3 simple steps</h2>
+  <p class="ssub">From finding a spot to driving in — under 2 minutes.</p>
+
+  <div class="steps-wrap reveal">
+    <div class="steps-line"></div>
+    <div class="step">
+      <div class="step-c" style="border-color:rgba(99,102,241,0.35);background:rgba(99,102,241,0.08)">
+        🔍<div class="step-n">1</div>
+      </div>
+      <h3>Find Parking</h3>
+      <p>See all available lots on an interactive map with real-time 2W & 4W slot counts.</p>
+    </div>
+    <div class="step">
+      <div class="step-c" style="border-color:rgba(34,211,238,0.35);background:rgba(34,211,238,0.08)">
+        💰<div class="step-n" style="background:linear-gradient(135deg,#22d3ee,#22c55e)">2</div>
+      </div>
+      <h3>Book & Pay</h3>
+      <p>Auto-assigned slot, pay via UPI QR or cash at exit. First 15 minutes always free.</p>
+    </div>
+    <div class="step">
+      <div class="step-c" style="border-color:rgba(34,197,94,0.35);background:rgba(34,197,94,0.08)">
+        🎫<div class="step-n" style="background:linear-gradient(135deg,#22c55e,#16a34a)">3</div>
+      </div>
+      <h3>Scan QR & Park</h3>
+      <p>Show your digital QR pass at the gate. Live tracking, no paperwork, no queuing.</p>
+    </div>
+  </div>
+</div>
+
+<!-- CTA Strip -->
+<div class="sp" style="padding-top:0">
+  <div class="cta-strip reveal">
+    <h2 class="stitle" style="margin-bottom:10px">Ready to park smarter?</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:0.95rem">Join drivers saving 20–30 minutes every day across Indian cities</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="{{ url_for('lots_list') }}" class="btn btn-cta">Find Parking Near Me</a>
+      <a href="{{ url_for('register') }}" class="btn btn-ghost">Create Free Account →</a>
+    </div>
+  </div>
+</div>
+
+<!-- PWA Banner -->
+<div id="pwa-banner">
+  <div class="pwa-inner">
+    <img src="{{ url_for('static', filename='icons/icon-72.png') }}" alt="SpotEasy">
+    <div class="pt">
+      <h4>Install SpotEasy App</h4>
+      <p>Free · Works Offline · No App Store needed</p>
+    </div>
+    <div class="pa">
+      <button id="pwa-install-btn">📲 Install</button>
+      <button id="pwa-close">✕</button>
     </div>
   </div>
 </div>
 
 <script>
-// Icons
-lucide.createIcons();
+// Navbar glass on scroll
+(function(){
+  const nav = document.querySelector('.navbar-custom') || document.querySelector('nav');
+  if(!nav) return;
+  const onScroll = () => nav.classList.toggle('nav-solid', window.scrollY > 60);
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
 
-// Theme toggle
-function toggleTheme() {
-  var dark = document.documentElement.classList.toggle('dark');
-  localStorage.setItem('se_theme', dark ? 'dark' : 'light');
-  lucide.createIcons();
-}
+// Reveal on scroll
+(function(){
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if(e.isIntersecting){
+        setTimeout(() => e.target.classList.add('in'), i * 90);
+        obs.unobserve(e.target);
+      }
+    });
+  }, {threshold: 0.12});
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+})();
 
-// Footer clock
-function updateClock() {
-  var el = document.getElementById('footerClock');
-  if (!el) return;
-  try {
-    el.textContent = new Date().toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata', day:'2-digit', month:'short',
-      year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true
-    }) + ' IST';
-  } catch(e) {}
-}
-updateClock();
-setInterval(updateClock, 60000);
-
-// Scroll animations
-var _obs = new IntersectionObserver(function(entries) {
-  entries.forEach(function(e) {
-    if (e.isIntersecting) {
-      e.target.style.opacity = '1';
-      e.target.style.transform = 'none';
-    }
+// 3D Tilt on cards (desktop only)
+if(window.matchMedia('(pointer: fine)').matches){
+  document.querySelectorAll('.tilt-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = `perspective(900px) rotateY(${x*7}deg) rotateX(${-y*7}deg) scale(1.012)`;
+      card.style.transition = 'transform 0.08s ease-out';
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+      card.style.transition = 'transform 0.5s ease-out, border-color 0.3s, box-shadow 0.3s';
+    });
   });
-}, { threshold: 0.1 });
-document.querySelectorAll('.animate-on-scroll').forEach(function(el) { _obs.observe(el); });
+}
 
-// ── PWA Install — EXACT V21 LOGIC ─────────────────────────────────
-var deferredPrompt = window._dPrompt || null;
-var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+// Live stats from API — updates every 30 seconds
+function animateCount(el, newVal) {
+  if(!el || newVal === undefined) return;
+  el.classList.remove('counting');
+  void el.offsetWidth;
+  el.textContent = newVal;
+  el.classList.add('counting');
+}
 
-// Also listen for prompt in case it fires after page load
-window.addEventListener('beforeinstallprompt', function(e) {
+function fetchStats() {
+  fetch('/api/public/stats', {cache: 'no-store'})
+    .then(r => r.json())
+    .then(d => {
+      animateCount(document.getElementById('statLots'),   d.total_lots);
+      animateCount(document.getElementById('statSlots'),  d.total_slots);
+      animateCount(document.getElementById('statFree'),   d.free_slots);
+      animateCount(document.getElementById('statCities'), d.city_count);
+    })
+    .catch(() => {});
+}
+fetchStats();
+setInterval(fetchStats, 30000);
+
+// PWA Install
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
-  window._dPrompt = e;
-  showInstallUI();
+  setTimeout(() => {
+    document.getElementById('pwa-banner').style.display = 'block';
+  }, 4000);
 });
-
-function showInstallUI() {
-  if (isStandalone) return;
-  if (localStorage.getItem('se_installed')) return;
-  if (localStorage.getItem('se_hide')) return;
-  if (window.innerWidth < 768 || isIOS) {
-    var fb = document.getElementById('installFloatBtn');
-    if (fb) fb.style.display = 'block';
-  } else {
-    var tb = document.getElementById('installTopBanner');
-    if (tb) tb.style.display = 'block';
-  }
-}
-
-function hideInstall() {
-  var fb = document.getElementById('installFloatBtn');
-  var tb = document.getElementById('installTopBanner');
-  if (fb) fb.style.display = 'none';
-  if (tb) tb.style.display = 'none';
-  localStorage.setItem('se_hide', '1');
-}
-
-function doInstall() {
-  // iOS — show step by step
-  if (isIOS) {
-    var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:16px;';
-    overlay.innerHTML =
-      '<div style="background:white;border-radius:24px;padding:24px;width:100%;max-width:420px;color:#111827;text-align:center;">' +
-      '<img src="/static/icons/icon-72.png" style="width:52px;height:52px;border-radius:14px;margin-bottom:10px;"/>' +
-      '<div style="font-size:19px;font-weight:900;margin-bottom:14px;">Install on iPhone / iPad</div>' +
-      '<div style="background:#f0fdf4;border-radius:12px;padding:14px;text-align:left;font-size:14px;line-height:2.4;color:#374151;border:1px solid #bbf7d0;">' +
-      '<div>1. Tap <b>Share &#11014;</b> at the bottom of Safari</div>' +
-      '<div>2. Scroll and tap <b>Add to Home Screen</b></div>' +
-      '<div>3. Tap <b>Add</b> &mdash; Done!</div>' +
-      '</div>' +
-      '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;margin-top:14px;background:#16a34a;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;">Got it!</button>' +
-      '</div>';
-    document.body.appendChild(overlay);
-    return;
-  }
-
-  // Android / Desktop — use native prompt
-  var p = deferredPrompt || window._dPrompt;
-  if (p) {
-    p.prompt();
-    p.userChoice.then(function(result) {
-      if (result.outcome === 'accepted') {
-        hideInstall();
-        var toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:12px 22px;border-radius:14px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.2);white-space:nowrap;';
-        toast.textContent = 'SpotEasy installed! Open from home screen.';
-        document.body.appendChild(toast);
-        setTimeout(function() { toast.remove(); }, 3000);
-      }
-      deferredPrompt = null;
-      window._dPrompt = null;
-    });
-    return;
-  }
-
-  // No prompt available — guide user
-  var isMob = /Android/i.test(navigator.userAgent);
-  var overlay2 = document.createElement('div');
-  overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
-  overlay2.innerHTML =
-    '<div style="background:white;border-radius:24px;padding:24px;width:100%;max-width:400px;color:#111827;text-align:center;">' +
-    '<img src="/static/icons/icon-72.png" style="width:52px;height:52px;border-radius:14px;margin-bottom:10px;"/>' +
-    '<div style="font-size:18px;font-weight:900;margin-bottom:12px;">Install SpotEasy</div>' +
-    '<div style="background:#f0fdf4;border-radius:12px;padding:14px;text-align:left;font-size:14px;line-height:2.4;color:#374151;border:1px solid #bbf7d0;">' +
-    (isMob
-      ? '<div>1. Tap <b>3-dot menu &#8942;</b> in Chrome</div><div>2. Tap <b>Add to Home screen</b></div><div>3. Tap <b>Add</b></div>'
-      : '<div>1. Click <b>install icon &#8853;</b> in address bar</div><div>2. Or Chrome menu &#8942; &rarr; <b>Install SpotEasy</b></div><div>3. Click <b>Install</b></div>') +
-    '</div>' +
-    '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;margin-top:14px;background:#16a34a;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;">OK, got it!</button>' +
-    '</div>';
-  document.body.appendChild(overlay2);
-}
-
-// Show install UI on load
-window.addEventListener('appinstalled', function() {
-  hideInstall();
-  localStorage.setItem('se_installed', '1');
+const installBtn = document.getElementById('pwa-install-btn');
+const closeBtn   = document.getElementById('pwa-close');
+if(installBtn) installBtn.addEventListener('click', async () => {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('pwa-banner').style.display = 'none';
 });
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Always show the right button based on screen size
-  if (isStandalone || localStorage.getItem('se_installed')) {
-    // Already installed — hide both
-    var fb = document.getElementById('installFloatBtn');
-    var tb = document.getElementById('installTopBanner');
-    if (fb) fb.style.display = 'none';
-    if (tb) tb.style.display = 'none';
-    return;
-  }
-  if (localStorage.getItem('se_hide')) {
-    var fb = document.getElementById('installFloatBtn');
-    var tb = document.getElementById('installTopBanner');
-    if (fb) fb.style.display = 'none';
-    if (tb) tb.style.display = 'none';
-    return;
-  }
-  // Show correct button for screen size
-  if (window.innerWidth < 768) {
-    document.getElementById('installTopBanner').style.display = 'none';
-  } else {
-    document.getElementById('installFloatBtn').style.display = 'none';
-  }
+if(closeBtn) closeBtn.addEventListener('click', () => {
+  document.getElementById('pwa-banner').style.display = 'none';
 });
 </script>
-
-<!-- Register service worker -->
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(function(){});
-}
-</script>
-
-{% if current_user.is_authenticated %}
-<script src="/static/keep-alive.js" defer></script>
-<script src="/static/notifications.js" defer></script>
-{% endif %}
-
-{% block scripts %}{% endblock %}
 </body>
-</html>
+{% endblock %}
