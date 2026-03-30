@@ -1,224 +1,174 @@
 {% extends "base.html" %}
-{% block title %}Book Slot — {{ lot.name }}{% endblock %}
+{% block title %}Admin Dashboard — SpotEasy{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto">
-  <a href="{{ url_for('lots_list') }}" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-5">
-    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Lots
-  </a>
+<div class="flex flex-wrap items-center justify-between gap-4 mb-8 animate-fade-in">
+  <div>
+    <div class="flex items-center gap-3 mb-1">
+      <h1 class="text-3xl font-black text-gray-900 dark:text-white">Admin Dashboard</h1>
+      <span style="background:#ef4444;color:white;font-size:11px;font-weight:900;padding:2px 10px;border-radius:99px;display:none;" id="badgePendingVendors">0 new</span>
+    </div>
+    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">
+      Platform management &nbsp;·&nbsp;
+      <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-bold text-xs">
+        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>
+        Live — auto-refreshing every 5s
+      </span>
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <a href="{{ url_for('admin_notify') }}" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all hover:scale-105">
+      <i data-lucide="bell" class="w-4 h-4"></i> Notify
+    </a>
+    <a href="{{ url_for('admin_db_view') }}" class="inline-flex items-center gap-2 bg-slate-800 dark:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-slate-700 dark:hover:bg-slate-600 transition-all hover:scale-105">
+      <i data-lucide="database" class="w-4 h-4"></i> View DB
+    </a>
+  </div>
+</div>
 
-  <div class="card shadow-2xl animate-scale-in">
-    <!-- Lot Header -->
-    <div class="flex items-start justify-between mb-6 pb-5 border-b border-gray-100 dark:border-dark-700">
-      <div>
-        <h1 class="text-2xl font-black text-gray-900 dark:text-white">{{ lot.name }}</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-          <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> {{ lot.address }}, {{ lot.city }}
-        </p>
-      </div>
-      <div class="text-right shrink-0 ml-3">
-        <div class="text-sm font-bold text-green-600 dark:text-green-400">{{ slots|length }} slots free</div>
+<!-- Stats -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger">
+  {% for label,val,icon,grad in [
+    ('Total Vendors',   vendors|length,   'building-2',   'from-blue-500 to-indigo-600'),
+    ('Total Customers', customers|length, 'users',        'from-green-500 to-emerald-600'),
+    ('Total Lots',      lots|length,      'map-pin',      'from-purple-500 to-pink-600'),
+    ('Active Lots',     lots|selectattr("is_active")|list|length, 'check-circle-2', 'from-teal-500 to-cyan-600'),
+  ] %}
+  <div class="card group hover:shadow-xl">
+    <div class="flex items-center justify-between mb-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br {{ grad }} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+        <i data-lucide="{{ icon }}" class="w-5 h-5 text-white"></i>
       </div>
     </div>
+    <div class="text-3xl font-black text-gray-900 dark:text-white">{{ val }}</div>
+    <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ label }}</div>
+  </div>
+  {% endfor %}
+</div>
 
-    <!-- Rate Cards -->
-    <div class="grid grid-cols-2 gap-3 mb-6">
-      <div class="bg-amber-50 dark:bg-amber-900/20 rounded-2xl p-3 text-center border border-amber-200 dark:border-amber-800">
-        <div class="text-2xl mb-1">🛵</div>
-        <div class="font-black text-xl text-amber-700 dark:text-amber-300">₹{{ lot.rate_2w }}<span class="text-sm font-medium">/hr</span></div>
-        <div class="text-xs text-gray-500 mt-0.5">2-Wheeler</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Vendor Approvals -->
+  <div class="card animate-on-scroll">
+    <h2 class="font-black text-lg mb-5 flex items-center gap-2 text-gray-900 dark:text-white">
+      <div class="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+        <i data-lucide="user-check" class="w-4 h-4 text-green-600 dark:text-green-400"></i>
       </div>
-      <div class="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-3 text-center border border-blue-200 dark:border-blue-800">
-        <div class="text-2xl mb-1">🚗</div>
-        <div class="font-black text-xl text-blue-700 dark:text-blue-300">₹{{ lot.rate_4w }}<span class="text-sm font-medium">/hr</span></div>
-        <div class="text-xs text-gray-500 mt-0.5">4-Wheeler</div>
+      Vendors
+    </h2>
+    {% if vendors %}
+    <div class="space-y-3">
+      {% for v in vendors %}
+      <div class="flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-dark-800 hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+            {{ v.name[0].upper() }}
+          </div>
+          <div>
+            <p class="font-semibold text-sm text-gray-900 dark:text-white">{{ v.name }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ v.email }}</p>
+          </div>
+        </div>
+        {% if not v.is_approved %}
+        <form method="POST" action="{{ url_for('approve_vendor', uid=v.id) }}">
+          <button class="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:scale-105">Approve ✓</button>
+        </form>
+        {% else %}
+        <span class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs font-bold px-3 py-1.5 rounded-xl">Approved ✓</span>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin_delete_user', uid=v.id) }}" onsubmit="return confirm('Delete vendor {{ v.name }}? This will also delete all their lots and slots.');" style="display:inline;">
+          <button class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:scale-105">Delete 🗑</button>
+        </form>
       </div>
+      {% endfor %}
     </div>
-
-    {% if slots %}
-    <form method="POST" id="bookForm">
-
-      <!-- Slot Grid -->
-      <div class="mb-6">
-        <label class="block text-sm font-black text-gray-700 dark:text-gray-300 mb-3">
-          Select a Slot
-          <span id="slotTypeHint" class="ml-2 text-xs font-normal text-gray-400">← click to select</span>
-        </label>
-
-        <!-- 2W Slots -->
-        {% set slots_2w = slots|selectattr('slot_type','eq','2w')|list %}
-        {% if slots_2w %}
-        <p class="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2">🛵 2-Wheeler Slots</p>
-        <div class="grid grid-cols-5 sm:grid-cols-8 gap-2 mb-4">
-          {% for slot in slots_2w %}
-          <label class="cursor-pointer group">
-            <input type="radio" name="slot_id" value="{{ slot.id }}"
-                   data-type="2w" class="peer hidden slot-radio" required/>
-            <div class="slot-available peer-checked:!bg-amber-500 peer-checked:!border-amber-500 peer-checked:!text-white rounded-xl p-2 text-center text-xs font-bold transition-all hover:scale-110 group-hover:shadow-md peer-checked:scale-110 peer-checked:shadow-lg">
-              <div class="text-base">🛵</div>
-              <div>{{ slot.label }}</div>
-            </div>
-          </label>
-          {% endfor %}
-        </div>
-        {% endif %}
-
-        <!-- 4W Slots -->
-        {% set slots_4w = slots|selectattr('slot_type','eq','4w')|list %}
-        {% if slots_4w %}
-        <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">🚗 4-Wheeler Slots</p>
-        <div class="grid grid-cols-5 sm:grid-cols-8 gap-2">
-          {% for slot in slots_4w %}
-          <label class="cursor-pointer group">
-            <input type="radio" name="slot_id" value="{{ slot.id }}"
-                   data-type="4w" class="peer hidden slot-radio" required/>
-            <div class="slot-available peer-checked:!bg-blue-500 peer-checked:!border-blue-500 peer-checked:!text-white rounded-xl p-2 text-center text-xs font-bold transition-all hover:scale-110 group-hover:shadow-md peer-checked:scale-110 peer-checked:shadow-lg">
-              <div class="text-base">🚗</div>
-              <div>{{ slot.label }}</div>
-            </div>
-          </label>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-
-      <!-- Vehicle Type (auto-selected, read-only display) -->
-      <div class="mb-5">
-        <label class="block text-sm font-black text-gray-700 dark:text-gray-300 mb-2">Vehicle Type</label>
-        <div class="grid grid-cols-2 gap-3" id="vehicleTypeDisplay">
-          <div id="vt2w" class="rounded-2xl p-3 text-center border-2 border-gray-200 dark:border-dark-600 opacity-40 transition-all">
-            <div class="text-2xl mb-1">🛵</div>
-            <div class="font-bold text-sm text-gray-600 dark:text-gray-300">2-Wheeler</div>
-            <div class="text-xs text-gray-400">Auto-selected</div>
-          </div>
-          <div id="vt4w" class="rounded-2xl p-3 text-center border-2 border-gray-200 dark:border-dark-600 opacity-40 transition-all">
-            <div class="text-2xl mb-1">🚗</div>
-            <div class="font-bold text-sm text-gray-600 dark:text-gray-300">4-Wheeler</div>
-            <div class="text-xs text-gray-400">Auto-selected</div>
-          </div>
-        </div>
-        <input type="hidden" name="vehicle_type" id="vehicleTypeInput" value="4w"/>
-      </div>
-
-      <!-- Vehicle Number -->
-      <div class="mb-5">
-        <label class="block text-sm font-black text-gray-700 dark:text-gray-300 mb-1.5">
-          Vehicle Number *
-          <span class="text-xs font-normal text-gray-400 ml-1">Indian format: DL01AB1234</span>
-        </label>
-        <input type="text" name="vehicle_no" id="vehicleNo" required
-               placeholder="e.g. DL01AB1234 or UP32AB1234"
-               maxlength="11"
-               class="inp uppercase font-mono tracking-widest text-lg"/>
-        <p id="vehicleNoError" class="text-red-500 text-xs mt-1 hidden">
-          ⚠️ Enter a valid Indian vehicle number (e.g. MH12CD3456)
-        </p>
-        <p class="text-xs text-gray-400 mt-1">Format: 2 letters + 2 digits + 1-2 letters + 4 digits</p>
-      </div>
-
-      <!-- Grace Period Notice -->
-      <div class="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-2xl p-4 mb-6 flex gap-3">
-        <span class="text-2xl shrink-0">⏱️</span>
-        <div>
-          <p class="font-bold text-green-700 dark:text-green-300 text-sm">15-Minute Grace Period</p>
-          <p class="text-xs text-green-600 dark:text-green-400 mt-0.5">If you exit within 15 minutes, parking is completely FREE!</p>
-        </div>
-      </div>
-
-      <button type="submit" id="submitBtn" disabled
-        class="btn-primary w-full py-4 rounded-2xl text-base opacity-50 cursor-not-allowed transition-all">
-        Select a slot to continue
-      </button>
-    </form>
-
     {% else %}
-    <div class="text-center py-12">
-      <div class="w-16 h-16 rounded-3xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-        <i data-lucide="x-circle" class="w-8 h-8 text-red-500"></i>
+    <p class="text-gray-400 text-sm text-center py-8">No vendors yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Lot Approvals -->
+  <div class="card animate-on-scroll">
+    <h2 class="font-black text-lg mb-5 flex items-center gap-2 text-gray-900 dark:text-white">
+      <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+        <i data-lucide="map-pin" class="w-4 h-4 text-blue-600 dark:text-blue-400"></i>
       </div>
-      <p class="text-lg font-bold text-gray-600 dark:text-gray-300">No slots available right now</p>
-      <a href="{{ url_for('lots_list') }}" class="btn-primary mt-4 px-8 py-3 rounded-xl inline-flex items-center gap-2">
-        Find another lot →
-      </a>
+      Parking Lots
+    </h2>
+    {% if lots %}
+    <div class="space-y-3">
+      {% for lot in lots %}
+      <div class="flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-dark-800 hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors">
+        <div>
+          <p class="font-semibold text-sm text-gray-900 dark:text-white">{{ lot.name }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ lot.city }} · {{ lot.total_slots }} slots · {{ lot.owner.name }}</p>
+        </div>
+        {% if not lot.is_active %}
+        <form method="POST" action="{{ url_for('approve_lot', lid=lot.id) }}">
+          <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:scale-105">Go Live ✓</button>
+        </form>
+        {% else %}
+        <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold px-3 py-1.5 rounded-xl">Live ✓</span>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin_delete_lot', lid=lot.id) }}" onsubmit="return confirm('Delete lot {{ lot.name }}? All slots and reservations will be deleted.');" style="display:inline;margin-left:6px;">
+          <button class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:scale-105">Delete 🗑</button>
+        </form>
+%}
+      </div>
+      {% endfor %}
     </div>
+    {% else %}
+    <p class="text-gray-400 text-sm text-center py-8">No lots yet.</p>
     {% endif %}
   </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-// ── Auto vehicle type from slot selection ────────────────────────────────────
-document.querySelectorAll('.slot-radio').forEach(radio => {
-  radio.addEventListener('change', function() {
-    const type = this.dataset.type;
-    document.getElementById('vehicleTypeInput').value = type;
-
-    const vt2w = document.getElementById('vt2w');
-    const vt4w = document.getElementById('vt4w');
-    const hint = document.getElementById('slotTypeHint');
-
-    if (type === '2w') {
-      vt2w.className = vt2w.className.replace('opacity-40','opacity-100').replace('border-gray-200 dark:border-dark-600','border-amber-400 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-500');
-      vt4w.className = vt4w.className.replace('opacity-100','opacity-40').replace('border-amber-400 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-500','border-gray-200 dark:border-dark-600');
-      hint.textContent = '🛵 2-Wheeler slot selected';
-      hint.className = 'ml-2 text-xs font-semibold text-amber-600';
-    } else {
-      vt4w.className = vt4w.className.replace('opacity-40','opacity-100').replace('border-gray-200 dark:border-dark-600','border-blue-400 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500');
-      vt2w.className = vt2w.className.replace('opacity-100','opacity-40').replace('border-blue-400 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500','border-gray-200 dark:border-dark-600');
-      hint.textContent = '🚗 4-Wheeler slot selected';
-      hint.className = 'ml-2 text-xs font-semibold text-blue-600';
-    }
-
-    // Enable submit if vehicle number is also filled
-    checkFormReady();
-  });
-});
-
-// ── Vehicle number validation (Indian format) ────────────────────────────────
-// Format: XX00XX0000 — e.g. DL01AB1234, MH12CD3456, UP32KA9876
-const vehiclePattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,3}[0-9]{4}$/;
-
-const vehicleInput = document.getElementById('vehicleNo');
-vehicleInput.addEventListener('input', function() {
-  this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  checkFormReady();
-});
-
-vehicleInput.addEventListener('blur', function() {
-  const err = document.getElementById('vehicleNoError');
-  if (this.value && !vehiclePattern.test(this.value)) {
-    err.classList.remove('hidden');
-    this.classList.add('border-red-400');
-    this.classList.remove('border-green-400');
-  } else if (this.value) {
-    err.classList.add('hidden');
-    this.classList.remove('border-red-400');
-    this.classList.add('border-green-400');
-  }
-});
-
-function checkFormReady() {
-  const slotSelected = document.querySelector('.slot-radio:checked');
-  const vehicleOk    = vehiclePattern.test(vehicleInput.value);
-  const btn          = document.getElementById('submitBtn');
-  if (slotSelected && vehicleOk) {
-    btn.disabled = false;
-    btn.classList.remove('opacity-50','cursor-not-allowed');
-    btn.textContent = '✅ Confirm Booking';
-  } else {
-    btn.disabled = true;
-    btn.classList.add('opacity-50','cursor-not-allowed');
-    btn.textContent = slotSelected ? 'Enter valid vehicle number' : 'Select a slot to continue';
-  }
-}
-
-// ── Prevent invalid vehicle number on submit ─────────────────────────────────
-document.getElementById('bookForm')?.addEventListener('submit', function(e) {
-  if (!vehiclePattern.test(vehicleInput.value)) {
-    e.preventDefault();
-    document.getElementById('vehicleNoError').classList.remove('hidden');
-    vehicleInput.focus();
-  }
-});
-</script>
+<!-- Recent Bookings -->
+<div class="card animate-on-scroll">
+  <h2 class="font-black text-lg mb-5 flex items-center gap-2 text-gray-900 dark:text-white">
+    <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+      <i data-lucide="list" class="w-4 h-4 text-purple-600 dark:text-purple-400"></i>
+    </div>
+    Recent Bookings
+  </h2>
+  {% if reservations %}
+  <div class="overflow-x-auto -mx-2">
+    <table class="w-full text-sm min-w-[600px]">
+      <thead>
+        <tr class="text-left text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider border-b border-gray-100 dark:border-dark-700">
+          <th class="pb-3 pl-2 font-semibold">Customer</th>
+          <th class="pb-3 font-semibold">Vehicle</th>
+          <th class="pb-3 font-semibold">Lot / Slot</th>
+          <th class="pb-3 font-semibold">Entry (IST)</th>
+          <th class="pb-3 font-semibold">Status</th>
+          <th class="pb-3 font-semibold">Amount</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50 dark:divide-dark-800">
+        {% for r in reservations %}
+        <tr class="hover:bg-gray-50 dark:hover:bg-dark-800 transition-colors">
+          <td class="py-3 pl-2 font-semibold text-gray-900 dark:text-white">{{ r.customer.name }}</td>
+          <td class="py-3 text-gray-500 dark:text-gray-400">{{ r.vehicle_no }}<br/><span class="text-xs">{{ '🛵' if r.vehicle_type=='2w' else '🚗' }}</span></td>
+          <td class="py-3 text-gray-600 dark:text-gray-300">{{ r.slot.lot.name[:20] }}<br/><span class="text-xs text-gray-400">{{ r.slot.label }}</span></td>
+          <td class="py-3 text-xs text-gray-500 dark:text-gray-400">{{ r.entry_time.strftime('%d %b %I:%M %p') }}</td>
+          <td class="py-3">
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold
+              {% if r.status=='active' %}bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300
+              {% else %}bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-400{% endif %}">
+              {{ '🟢' if r.status=='active' else '✅' }} {{ r.status }}
+            </span>
+          </td>
+          <td class="py-3 font-bold text-gray-900 dark:text-white">{% if r.amount_paid %}₹{{ r.amount_paid }}{% else %}—{% endif %}</td>
+          <td class="py-3">
+            <form method="POST" action="{{ url_for('admin_delete_reservation', rid=r.id) }}" onsubmit="return confirm('Delete this reservation?');" style="display:inline;">
+              <button class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-gray-400 text-sm text-center py-8">No bookings yet.</p>
+  {% endif %}
+</div>
 {% endblock %}
