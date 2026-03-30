@@ -1,1 +1,1 @@
-// Firebase SW stub — not used
+// Firebase SW stub - not used
