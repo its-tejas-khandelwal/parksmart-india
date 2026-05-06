@@ -1,134 +1,196 @@
 {% extends "base.html" %}
 {% block title %}Digital Pass — SpotEasy{% endblock %}
+
 {% block content %}
 {% set entry_ist = to_ist(res.entry_time) %}
-{% set lot = res.slot.lot %}
 
-<div style="max-width:440px;margin:0 auto;">
-  <!-- PASS CARD -->
-  <div class="anim-item visible" style="border-radius:20px;overflow:hidden;border:1px solid rgba(99,102,241,0.4);box-shadow:0 0 36px rgba(99,102,241,0.15);">
-    <!-- header -->
-    <div style="background:linear-gradient(135deg,#6366F1,#22D3EE);padding:18px 22px;text-align:center;color:white;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;opacity:0.85;margin-bottom:3px;">SpotEasy 🅿️ Digital Pass</div>
-      <h2 class="syne" style="font-size:20px;font-weight:700;">{{ lot.name }}</h2>
-      <div style="font-size:12px;opacity:0.85;margin-top:2px;">📍 {{ lot.address }}, {{ lot.city }}</div>
+<div style="max-width:400px;margin:0 auto;padding:10px;">
+  <div style="border-radius:24px;overflow:hidden;border:1px solid rgba(99,102,241,0.3);box-shadow:0 20px 50px rgba(0,0,0,0.15);background:var(--bg-primary);" class="anim-item visible">
+    
+    <!-- Pass Header -->
+    <div style="background:linear-gradient(135deg,#6366F1 0%,#22D3EE 100%);padding:20px 24px;text-align:center;color:white;">
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;opacity:0.9;margin-bottom:4px;">SpotEasy 🅿️ Digital Pass</div>
+      <h2 class="syne" style="font-size:22px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ res.slot.lot.name }}</h2>
+      <div style="font-size:12px;opacity:0.85;margin-top:4px;">📍 {{ res.slot.lot.address }}, {{ res.slot.lot.city }}</div>
     </div>
 
-    <!-- QR -->
-    <div style="background:var(--bg-secondary);padding:24px;text-align:center;">
+    <!-- QR & Status Section -->
+    <div style="background:var(--bg-secondary);padding:28px 24px;text-align:center;position:relative;border-bottom:1px solid var(--border-subtle);">
       {% if qr_b64 %}
-      <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR" style="width:200px;height:200px;background:white;padding:12px;border-radius:14px;"/>
+      <div style="position:relative;display:inline-block;border-radius:18px;overflow:hidden;border:4px solid white;box-shadow:0 10px 25px rgba(99,102,241,0.2);background:white;padding:12px;">
+        <img src="data:image/png;base64,{{ qr_b64 }}" style="width:176px;height:176px;display:block;" alt="QR Code"/>
+        <div style="position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#22D3EE,transparent);animation:scanLine 3s ease-in-out infinite;top:12px;z-index:10;"></div>
+      </div>
       {% else %}
-      <div style="width:200px;height:200px;background:#fff;color:#000;padding:14px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;word-break:break-all;">{{ res.qr_token }}</div>
-      {% endif %}
-      <div style="font-size:11px;color:var(--text-muted);margin-top:10px;">Show this at the gate.</div>
-    </div>
-
-    <!-- details -->
-    <div style="background:var(--bg-secondary);padding:0 22px 22px;display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;">
-      <div><div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;">Slot</div><div style="font-weight:700;margin-top:2px;">{{ res.slot.label }}</div></div>
-      <div><div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;">Vehicle</div><div style="font-weight:700;margin-top:2px;">{{ res.vehicle_no }}</div></div>
-      <div><div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;">Type</div><div style="font-weight:700;margin-top:2px;">{{ '🛵 2-Wheeler' if res.vehicle_type=='2w' else '🚗 4-Wheeler' }}</div></div>
-      <div><div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;">Rate</div><div style="font-weight:700;margin-top:2px;">₹{{ lot.rate_2w if res.vehicle_type=='2w' else lot.rate_4w }}/hr</div></div>
-      <div style="grid-column:1 / -1;"><div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;">Entry</div><div style="font-weight:700;margin-top:2px;">{{ entry_ist.strftime('%d %b %Y, %I:%M %p') }} IST</div></div>
-
-      {% if res.status == 'completed' %}
-      <div style="grid-column:1 / -1;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Total Paid</span>
-          <span class="badge badge-green">{{ res.payment_method|upper }}</span>
-        </div>
-        <div class="syne" style="font-size:24px;font-weight:800;color:#10B981;">₹{{ res.amount_paid }}</div>
-        {% if res.txn_id %}<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Txn ID: <span style="color:#22D3EE;font-family:'JetBrains Mono',monospace;">{{ res.txn_id }}</span></div>{% endif %}
-        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Exit: {{ to_ist(res.exit_time).strftime('%d %b, %I:%M %p') }} IST</div>
+      <div style="width:176px;height:176px;border-radius:18px;background:rgba(99,102,241,0.05);border:2px dashed rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto;flex-direction:column;gap:10px;">
+        <span style="font-size:40px;">📱</span>
+        <span style="font-size:13px;color:var(--text-muted);">QR Unavailable</span>
       </div>
       {% endif %}
-    </div>
-  </div>
 
-  {% if res.status == 'active' %}
-  <!-- CHECKOUT FORM -->
-  <div class="glass-card anim-item visible" style="padding:22px;margin-top:18px;">
-    <h3 class="syne" style="font-size:17px;font-weight:700;margin-bottom:6px;">Check Out & Pay</h3>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">First 15 min are FREE.</p>
-
-    <form method="post" action="{{ url_for('checkout', rid=res.id) }}">
-      <label class="label-text">Payment method</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-        <label id="payCash" style="border:1px solid var(--border-subtle);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px;">
-          <input type="radio" name="payment_method" value="cash" checked onchange="togglePay('cash')"/> 💵 Cash
-        </label>
-        <label id="payUpi" style="border:1px solid var(--border-subtle);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px;">
-          <input type="radio" name="payment_method" value="upi" onchange="togglePay('upi')"/> 📱 UPI
-        </label>
+      <div style="margin-top:20px;">
+        <span class="badge {% if res.status=='active' %}badge-green{% else %}badge-muted{% endif %}" style="font-size:14px;padding:6px 18px;border-radius:50px;">
+          {% if res.status == 'active' %}<span class="pulse-dot pulse-green"></span> Live Session{% elif res.status == 'completed' %}✅ Completed{% else %}{{ res.status|title }}{% endif %}
+        </span>
       </div>
 
-      <!-- UPI panel -->
-      <div id="upiPanel" class="hidden" style="background:rgba(34,211,238,0.05);border:1px solid rgba(34,211,238,0.2);border-radius:10px;padding:16px;margin-bottom:16px;">
-        <div style="text-align:center;margin-bottom:12px;">
-          {% if lot.upi_qr_path %}
-          <img src="{{ url_for('static', filename=lot.upi_qr_path) }}" alt="UPI QR" style="width:180px;height:180px;background:white;padding:8px;border-radius:12px;"/>
-          {% elif lot.owner.upi_qr_path %}
-          <img src="{{ url_for('static', filename=lot.owner.upi_qr_path) }}" alt="UPI QR" style="width:180px;height:180px;background:white;padding:8px;border-radius:12px;"/>
-          {% else %}
-          <div style="width:180px;height:180px;background:rgba(255,255,255,0.04);border:1px dashed var(--border-medium);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-muted);text-align:center;padding:20px;">
-            Vendor hasn't uploaded a UPI QR. Use the UPI ID below.
-          </div>
-          {% endif %}
-        </div>
-        {% set upi = lot.upi_id or lot.owner.upi_id %}
-        {% if upi %}
-        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);border-radius:8px;padding:9px 12px;margin-bottom:12px;">
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">UPI ID</div>
-            <div style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#22D3EE;font-size:13px;" id="upiTxt">{{ upi }}</div>
-          </div>
-          <button type="button" onclick="copyUpi()" class="btn-secondary btn-sm">Copy</button>
-        </div>
+      {% if res.status == 'active' %}
+      <div id="timerDisplay" style="font-family:'JetBrains Mono',monospace;font-size:34px;font-weight:700;color:#6366F1;margin-top:12px;letter-spacing:-0.02em;">00:00:00</div>
+      <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">parked duration</div>
+      {% endif %}
+    </div>
+
+    <!-- Booking Details -->
+    <div style="background:var(--bg-tertiary);">
+      {% set rows = [
+        ('🎯','Slot', res.slot.label, true),
+        ('🚗','Vehicle', res.vehicle_no, true),
+        ('📅','Entry', entry_ist.strftime('%d %b %Y, %I:%M %p'), false),
+      ] %}
+      {% for ico, lbl, val, mono in rows %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border-subtle);">
+        <span style="color:var(--text-secondary);font-size:13px;">{{ ico }} {{ lbl }}</span>
+        <span style="font-weight:700;font-size:14px;{% if mono %}font-family:'JetBrains Mono',monospace;{% endif %}">{{ val }}</span>
+      </div>
+      {% endfor %}
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;">
+        <span style="color:var(--text-secondary);font-size:14px;font-weight:600;">Total Amount</span>
+        {% if res.amount_paid and res.amount_paid > 0 %}
+        <span class="syne" style="font-size:26px;font-weight:800;color:#6366F1;">₹{{ res.amount_paid|int }}</span>
         {% else %}
-        <div style="background:rgba(244,63,94,0.08);color:#F43F5E;padding:10px;border-radius:8px;font-size:12px;text-align:center;margin-bottom:12px;">No UPI ID configured. Pay cash, or ask the vendor.</div>
+        <span style="font-size:13px;color:#10B981;font-weight:700;background:rgba(16,185,129,0.1);padding:4px 10px;border-radius:6px;">⏱️ Grace Period</span>
         {% endif %}
-        <label class="label-text">Transaction ID *</label>
-        <input type="text" name="txn_id" id="txnInput" class="inp" placeholder="Enter UPI transaction reference"/>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">After paying through any UPI app, paste the transaction reference / UTR here.</div>
       </div>
+    </div>
 
-      <button type="submit" class="btn-primary" style="width:100%;padding:13px;">
-        Confirm Checkout & Pay
-      </button>
-    </form>
+    <!-- Actions Block -->
+    <div style="background:var(--bg-secondary);padding:14px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="{{ wa_url }}" target="_blank" rel="noopener" class="btn-secondary btn-sm" style="flex:1;justify-content:center;min-width:120px;">💬 WhatsApp</a>
+
+      {% if res.status == 'active' %}
+      <div style="flex:1;min-width:200px;">
+        <!-- 💳 Cash / UPI toggle -->
+        <div style="display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--border-medium);margin-bottom:8px;">
+          <button type="button" id="btnCash" onclick="setPayMethod('cash')"
+            style="flex:1;padding:8px 10px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;background:rgba(16,185,129,0.2);color:#10B981;">
+            💵 Cash
+          </button>
+          <button type="button" id="btnUpi" onclick="setPayMethod('upi')"
+            style="flex:1;padding:8px 10px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;background:var(--bg-tertiary);color:var(--text-secondary);">
+            📲 UPI
+          </button>
+        </div>
+        <form method="post" action="{{ url_for('checkout', rid=res.id) }}" id="checkoutForm">
+          <input type="hidden" name="payment_method" id="payMethodInput" value="cash"/>
+          <button type="submit" class="btn-primary btn-sm" id="checkoutBtn" style="width:100%;justify-content:center;font-weight:700;">
+            🚪 Checkout
+          </button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
   </div>
-  {% endif %}
 
-  <div style="text-align:center;margin-top:18px;">
-    <a href="{{ url_for('customer_dashboard') }}" style="color:var(--text-secondary);text-decoration:none;font-size:13px;">← Dashboard</a>
+  <div style="text-align:center;margin-top:20px;">
+    <a href="{{ url_for('customer_dashboard') }}" style="color:var(--text-muted);font-size:13px;text-decoration:none;">← Back to Dashboard</a>
   </div>
 </div>
 
-<script>
-function togglePay(m){
-  var panel = document.getElementById('upiPanel');
-  var txn   = document.getElementById('txnInput');
-  if(m === 'upi'){
-    panel.classList.remove('hidden');
-    if(txn) txn.required = true;
-    document.getElementById('payUpi').style.borderColor = '#22D3EE';
-    document.getElementById('payCash').style.borderColor = 'var(--border-subtle)';
-  } else {
-    panel.classList.add('hidden');
-    if(txn) txn.required = false;
-    document.getElementById('payCash').style.borderColor = '#10B981';
-    document.getElementById('payUpi').style.borderColor = 'var(--border-subtle)';
+<style>
+  @keyframes scanLine {
+    0% { top: 12px; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: calc(100% - 15px); opacity: 0; }
   }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+// ── Payment Toggle Logic ──
+var _payMethod = 'cash';
+function setPayMethod(method){
+  _payMethod = method;
+  document.getElementById('payMethodInput').value = method;
+  var isCash = (method === 'cash');
+  document.getElementById('btnCash').style.background = isCash ? 'rgba(16,185,129,0.2)' : 'var(--bg-tertiary)';
+  document.getElementById('btnCash').style.color      = isCash ? '#10B981' : 'var(--text-secondary)';
+  document.getElementById('btnUpi').style.background  = !isCash ? 'rgba(99,102,241,0.2)' : 'var(--bg-tertiary)';
+  document.getElementById('btnUpi').style.color       = !isCash ? '#818CF8' : 'var(--text-secondary)';
 }
-function copyUpi(){
-  var t = document.getElementById('upiTxt');
-  if(!t) return;
-  navigator.clipboard.writeText(t.textContent.trim()).then(function(){
-    t.textContent = '✓ Copied';
-    setTimeout(function(){ t.textContent = '{{ (lot.upi_id or lot.owner.upi_id or "")|safe }}'; }, 1200);
+
+// ── Async Checkout Logic ──
+var _checkoutPending = false;
+var checkoutForm = document.getElementById('checkoutForm');
+if(checkoutForm){
+  checkoutForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    if(_checkoutPending) return;
+
+    var label = (_payMethod === 'upi') ? 'UPI' : 'Cash';
+    if(!confirm('Confirm checkout now? Payment via ' + label + '.')) return;
+
+    _checkoutPending = true;
+    var btn = document.getElementById('checkoutBtn');
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.35);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;"></span>Checking out...';
+    btn.disabled = true;
+    btn.style.opacity = '0.75';
+
+    var ctrl = new AbortController();
+    var to = setTimeout(function(){ ctrl.abort(); }, 20000);
+
+    try {
+      var resp = await fetch(this.action, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: new FormData(this),
+        signal: ctrl.signal,
+        credentials: 'same-origin'
+      });
+      clearTimeout(to);
+      var data = null;
+      try { data = await resp.json(); } catch(_){}
+      
+      if(resp.ok && data && data.success && data.redirect_url){
+        window.location.href = data.redirect_url; 
+        return;
+      }
+      
+      var msg = (data && data.error) ? data.error : 'Checkout failed. Please try again.';
+      alert(msg);
+    } catch(err){
+      clearTimeout(to);
+      if(err.name === 'AbortError') alert('Server is slow. Please try again.');
+      else alert('Network error. Please try again.');
+    } finally {
+      _checkoutPending = false;
+      btn.innerHTML    = orig;
+      btn.disabled     = false;
+      btn.style.opacity= '1';
+    }
   });
 }
-window.SE_AUTOREFRESH = function(){};
+
+{% if res.status == 'active' %}
+// ── Fixed IST-aware Timer ──
+// Server sends UTC time; JS Date.parse() handles 'Z' suffix perfectly
+var entryUtcIso = "{{ res.entry_time.strftime('%Y-%m-%dT%H:%M:%SZ') }}";
+var entryMs     = Date.parse(entryUtcIso);
+
+function pad(n){ return n < 10 ? '0'+n : n; }
+function tick(){
+  var diff = Date.now() - entryMs;
+  if(diff < 0) diff = 0;
+  var h = Math.floor(diff/3600000);
+  var m = Math.floor((diff%3600000)/60000);
+  var s = Math.floor((diff%60000)/1000);
+  var el = document.getElementById('timerDisplay');
+  if(el) el.textContent = pad(h)+':'+pad(m)+':'+pad(s);
+}
+setInterval(tick, 1000);
+tick();
+{% endif %}
 </script>
 {% endblock %}

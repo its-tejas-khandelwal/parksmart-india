@@ -4,411 +4,396 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>{% block title %}SpotEasy — Smart Parking India{% endblock %}</title>
-<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}"/>
+<link rel="manifest" href="/static/manifest.json"/>
 <meta name="theme-color" content="#06080F"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="SpotEasy"/>
-<link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-96.png') }}"/>
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png"/>
+<link rel="icon" type="image/png" href="/static/icons/icon-96.png"/>
+<script>window._dPrompt=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window._dPrompt=e;});</script>
+<script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
-:root{
-  --bg-primary:#06080F; --bg-secondary:#0D1117; --bg-tertiary:#161B22;
-  --text-primary:#F0F6FC; --text-secondary:#8B949E; --text-muted:#6E7681;
-  --border-subtle:rgba(240,246,252,0.08); --border-medium:rgba(240,246,252,0.16);
-  --indigo:#6366F1; --cyan:#22D3EE; --amber:#F59E0B; --green:#10B981; --red:#F43F5E;
+/* ── DARK MODE (default) ── */
+:root {
+  --bg-primary:#06080F;--bg-secondary:#0D1117;--bg-tertiary:#161B22;
+  --border-subtle:rgba(255,255,255,0.07);--border-medium:rgba(255,255,255,0.12);
+  --accent-indigo:#6366F1;--accent-cyan:#22D3EE;--accent-emerald:#10B981;
+  --accent-amber:#F59E0B;--accent-rose:#F43F5E;
+  --text-primary:#F0F6FC;--text-secondary:#8B949E;--text-muted:#484F58;
+  --card-bg:rgba(13,17,23,0.75);--card-border:rgba(255,255,255,0.07);
+  --aurora-opacity:0.15;--nav-bg:rgba(6,8,15,0.9);
 }
-body.light{
-  --bg-primary:#F4F6FA; --bg-secondary:#FFFFFF; --bg-tertiary:#F0F2F7;
-  --text-primary:#0F172A; --text-secondary:#475569; --text-muted:#94A3B8;
-  --border-subtle:rgba(15,23,42,0.08); --border-medium:rgba(15,23,42,0.14);
+/* ── LIGHT MODE ── */
+body.light {
+  --bg-primary:#F0F4F8;--bg-secondary:#FFFFFF;--bg-tertiary:#E8EDF5;
+  --border-subtle:rgba(0,0,0,0.07);--border-medium:rgba(0,0,0,0.12);
+  --text-primary:#0F172A;--text-secondary:#475569;--text-muted:#94A3B8;
+  --card-bg:rgba(255,255,255,0.85);--card-border:rgba(0,0,0,0.08);
+  --aurora-opacity:0.08;--nav-bg:rgba(240,244,248,0.92);
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{font-family:'DM Sans',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;}
-body{padding-top:64px;}
-.syne{font-family:'Syne',sans-serif;}
-.gradient-text{background:linear-gradient(135deg,var(--indigo),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;overflow-x:hidden;transition:background 0.3s,color 0.3s;}
+h1,h2,h3,h4,.syne{font-family:'Syne',sans-serif;}
+.mono{font-family:'JetBrains Mono',monospace;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg-primary);}
+::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.4);border-radius:99px;}
 
-/* NAV */
-.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(6,8,15,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border-subtle);}
-body.light .nav{background:rgba(255,255,255,0.85);}
-.nav-inner{max-width:1200px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text-primary);}
-.brand-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#16a34a,#10B981);display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-family:'Syne',sans-serif;}
-.brand-name{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;}
-.nav-links{display:flex;align-items:center;gap:16px;}
-.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:14px;font-weight:500;}
-.nav-links a:hover{color:var(--text-primary);}
-.nav-icon-btn{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid var(--border-subtle);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;}
-.nav-icon-btn:hover{background:var(--bg-tertiary);}
-.notif-badge{position:absolute;top:-4px;right:-4px;background:#F43F5E;color:white;font-size:10px;font-weight:700;border-radius:99px;min-width:16px;height:16px;padding:0 4px;display:flex;align-items:center;justify-content:center;}
+/* Aurora */
+.aurora-container{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+.aurora-blob{position:absolute;border-radius:50%;filter:blur(120px);opacity:var(--aurora-opacity);animation:auroraDrift 20s ease-in-out infinite;}
+.aurora-1{width:600px;height:600px;background:#6366F1;top:-200px;left:-200px;animation-delay:0s;}
+.aurora-2{width:500px;height:500px;background:#22D3EE;bottom:-150px;right:-100px;animation-delay:-7s;}
+.aurora-3{width:400px;height:400px;background:#10B981;top:40%;left:50%;animation-delay:-14s;}
+@keyframes auroraDrift{0%,100%{transform:translate(0,0) scale(1);}33%{transform:translate(40px,-30px) scale(1.05);}66%{transform:translate(-20px,20px) scale(0.97);}}
 
-/* CONTAINER */
-.container{max-width:1200px;margin:0 auto;padding:24px 20px 80px;position:relative;z-index:1;}
-@media(max-width:600px){.container{padding:18px 14px 60px;}.nav-links{gap:8px;}.nav-links .label-hide{display:none;}}
+/* Glass card */
+.glass-card{
+  background:var(--card-bg);border:1px solid var(--card-border);
+  border-radius:16px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  transition:border-color 0.3s,transform 0.3s,box-shadow 0.3s;
+}
+.glass-card-hover:hover{border-color:rgba(99,102,241,0.35);transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,0.2);}
+body.light .glass-card{box-shadow:0 2px 12px rgba(0,0,0,0.08);}
+body.light .glass-card-hover:hover{box-shadow:0 12px 32px rgba(99,102,241,0.15);}
 
-/* CARDS */
-.glass-card{background:rgba(255,255,255,0.03);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--border-subtle);border-radius:14px;}
-body.light .glass-card{background:rgba(255,255,255,0.95);box-shadow:0 1px 3px rgba(0,0,0,0.04);}
-.glass-card-hover{transition:transform .18s,border-color .18s;}
-.glass-card-hover:hover{transform:translateY(-2px);border-color:var(--border-medium);}
+/* Gradient text */
+.gradient-text{background:linear-gradient(135deg,#6366F1 0%,#22D3EE 50%,#10B981 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:textShine 4s linear infinite;}
+@keyframes textShine{to{background-position:200% center;}}
 
-/* BUTTONS */
-.btn-primary,.btn-secondary,.btn-danger{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;text-decoration:none;transition:all .15s;}
-.btn-primary{background:linear-gradient(135deg,var(--indigo),var(--cyan));color:white;}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(99,102,241,0.3);}
-.btn-secondary{background:rgba(255,255,255,0.04);border:1px solid var(--border-subtle);color:var(--text-primary);}
-.btn-secondary:hover{background:rgba(255,255,255,0.08);}
-.btn-danger{background:rgba(244,63,94,0.12);color:#F43F5E;border:1px solid rgba(244,63,94,0.25);}
-.btn-sm{padding:6px 12px;font-size:12px;}
+/* Buttons */
+.btn-primary{background:linear-gradient(135deg,#6366F1,#22D3EE);color:white;border:none;border-radius:10px;padding:11px 22px;font-family:'DM Sans',sans-serif;font-weight:600;position:relative;overflow:hidden;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:14px;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,0.45);}
+.btn-primary::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent);transform:translateX(-100%);animation:shimmer 2.5s infinite;}
+@keyframes shimmer{100%{transform:translateX(100%);}}
+.btn-secondary{background:transparent;border:1px solid var(--border-medium);color:var(--text-primary);border-radius:10px;padding:11px 22px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;transition:border-color 0.2s,background 0.2s;display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:14px;}
+.btn-secondary:hover{border-color:rgba(99,102,241,0.5);background:rgba(99,102,241,0.08);}
+.btn-danger{background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#F43F5E;border-radius:8px;padding:7px 14px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;font-size:13px;text-decoration:none;}
+.btn-danger:hover{background:rgba(244,63,94,0.22);}
+.btn-sm{padding:7px 14px;font-size:12px;}
 
-/* INPUTS */
-.inp{width:100%;padding:11px 13px;background:rgba(13,17,23,0.6);border:1px solid var(--border-subtle);border-radius:10px;color:var(--text-primary);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;}
-body.light .inp{background:#fff;}
-.inp:focus{border-color:var(--indigo);}
-.label-text{display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;}
+/* Inputs */
+.inp{width:100%;background:var(--card-bg);border:1px solid var(--border-medium);color:var(--text-primary);border-radius:10px;padding:11px 14px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+.inp:focus{border-color:rgba(99,102,241,0.6);box-shadow:0 0 0 3px rgba(99,102,241,0.15);}
+.inp::placeholder{color:var(--text-muted);}
+select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238B949E' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;-webkit-appearance:none;}
 
-/* BADGES */
-.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
-.badge-green{background:rgba(16,185,129,0.12);color:#10B981;border:1px solid rgba(16,185,129,0.25);}
-.badge-amber{background:rgba(245,158,11,0.12);color:#F59E0B;border:1px solid rgba(245,158,11,0.25);}
-.badge-red{background:rgba(244,63,94,0.12);color:#F43F5E;border:1px solid rgba(244,63,94,0.25);}
-.badge-indigo{background:rgba(99,102,241,0.12);color:#6366F1;border:1px solid rgba(99,102,241,0.25);}
-.pulse-dot{width:6px;height:6px;border-radius:50%;display:inline-block;animation:pulse 1.6s ease-in-out infinite;}
-.pulse-green{background:#10B981;box-shadow:0 0 0 0 rgba(16,185,129,0.6);}
-.pulse-amber{background:#F59E0B;box-shadow:0 0 0 0 rgba(245,158,11,0.6);}
-.pulse-red{background:#F43F5E;box-shadow:0 0 0 0 rgba(244,63,94,0.6);}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+/* Badges */
+.badge{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+.badge-green{background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.25);}
+.badge-red{background:rgba(244,63,94,0.15);color:#F43F5E;border:1px solid rgba(244,63,94,0.25);}
+.badge-amber{background:rgba(245,158,11,0.15);color:#F59E0B;border:1px solid rgba(245,158,11,0.25);}
+.badge-indigo{background:rgba(99,102,241,0.15);color:#818CF8;border:1px solid rgba(99,102,241,0.25);}
+.badge-muted{background:rgba(128,128,128,0.12);color:var(--text-secondary);border:1px solid var(--border-subtle);}
 
-/* OCC BAR */
-.occ-bar{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden;}
-.occ-fill{height:100%;border-radius:99px;transition:width .35s ease;}
+/* Pulse dots */
+.pulse-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.pulse-green{background:#10B981;animation:pD 2s ease-in-out infinite;}
+.pulse-amber{background:#F59E0B;animation:pA 2s ease-in-out infinite;}
+.pulse-red{background:#F43F5E;}
+@keyframes pD{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.5);}50%{box-shadow:0 0 0 6px rgba(16,185,129,0);}}
+@keyframes pA{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.5);}50%{box-shadow:0 0 0 6px rgba(245,158,11,0);}}
 
-/* TABLES */
-.data-table{width:100%;border-collapse:collapse;}
-.data-table th,.data-table td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border-subtle);}
-.data-table th{font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;}
+/* Skeleton */
+.skeleton{background:linear-gradient(90deg,rgba(128,128,128,0.06) 25%,rgba(128,128,128,0.12) 50%,rgba(128,128,128,0.06) 75%);background-size:200% 100%;animation:sk 1.5s infinite;border-radius:8px;}
+@keyframes sk{to{background-position:-200% center;}}
 
-/* ANIM */
-.anim-item{opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s;}
+/* Animations */
+.anim-item{opacity:0;transform:translateY(24px);transition:opacity 0.6s ease,transform 0.6s ease;}
 .anim-item.visible{opacity:1;transform:translateY(0);}
 
-/* FLASH */
-.flash-stack{position:fixed;top:78px;right:18px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:340px;}
-.flash{padding:11px 14px;border-radius:10px;font-size:13px;border:1px solid;animation:slideIn .25s;}
-.flash-success{background:rgba(16,185,129,0.12);color:#10B981;border-color:rgba(16,185,129,0.3);}
-.flash-info{background:rgba(99,102,241,0.12);color:#6366F1;border-color:rgba(99,102,241,0.3);}
-.flash-warning{background:rgba(245,158,11,0.12);color:#F59E0B;border-color:rgba(245,158,11,0.3);}
-.flash-danger,.flash-error{background:rgba(244,63,94,0.12);color:#F43F5E;border-color:rgba(244,63,94,0.3);}
-@keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+/* Slot tiles */
+.slot-tile{border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;transition:all 0.25s;}
+.slot-avail{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.4);color:#10B981;}
+.slot-occ{background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:#F43F5E;}
 
-/* NOTIFICATION DROPDOWN */
-.notif-drop{position:fixed;top:62px;right:18px;width:340px;max-height:480px;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border-medium);border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,0.5);z-index:150;display:none;}
-.notif-drop.open{display:block;}
-.notif-head{padding:12px 16px;border-bottom:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;}
-.notif-item{padding:12px 16px;border-bottom:1px solid var(--border-subtle);cursor:pointer;display:flex;gap:10px;align-items:flex-start;}
-.notif-item:hover{background:var(--bg-tertiary);}
-.notif-item.unread{background:rgba(99,102,241,0.06);}
-.notif-icon{font-size:20px;flex-shrink:0;}
-.notif-text{flex:1;min-width:0;}
-.notif-title{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:2px;}
-.notif-body{font-size:12px;color:var(--text-secondary);line-height:1.4;}
-.notif-time{font-size:11px;color:var(--text-muted);margin-top:3px;}
+/* Table */
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table th{background:rgba(128,128,128,0.06);color:var(--text-secondary);font-weight:500;text-align:left;padding:10px 14px;border-bottom:1px solid var(--border-subtle);white-space:nowrap;}
+.data-table td{padding:10px 14px;border-bottom:1px solid var(--border-subtle);color:var(--text-primary);vertical-align:middle;}
+.data-table tr:hover td{background:rgba(128,128,128,0.04);}
 
-/* MAP Z-INDEX FIX (the main bug) */
-.map-wrap{position:relative;z-index:1;overflow:hidden;border-radius:14px;}
-.leaflet-container{z-index:1 !important;}
-.leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:2 !important;}
-.leaflet-popup-pane{z-index:3 !important;}
-.leaflet-control{z-index:4 !important;}
+/* Occupancy bar */
+.occ-bar{height:4px;border-radius:99px;background:rgba(128,128,128,0.12);overflow:hidden;}
+.occ-fill{height:100%;border-radius:99px;transition:width 0.6s ease;}
 
-/* FOOTER */
-.footer{margin-top:60px;padding:28px 20px;border-top:1px solid var(--border-subtle);text-align:center;font-size:13px;color:var(--text-secondary);}
-.footer a{color:var(--text-secondary);margin:0 12px;text-decoration:none;}
-.footer a:hover{color:var(--text-primary);}
+/* Navbar */
+#navbar{position:fixed;top:0;left:0;right:0;z-index:1000;transition:background 0.3s,border-color 0.3s;border-bottom:1px solid transparent;}
+#navbar.scrolled{background:var(--nav-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-color:var(--border-subtle);}
+.nav-link{color:var(--text-secondary);text-decoration:none;font-size:14px;font-weight:500;padding:6px 12px;border-radius:8px;transition:color 0.2s,background 0.2s;display:inline-block;}
+.nav-link:hover{color:var(--text-primary);background:rgba(128,128,128,0.08);}
 
-/* UTIL */
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.hidden{display:none !important;}
+/* Mobile menu */
+#mobile-menu{display:none;position:absolute;top:100%;left:0;right:0;background:var(--nav-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-subtle);padding:12px 16px 20px;}
+#mobile-menu.open{display:block;}
+
+/* Theme toggle button */
+.theme-btn{background:var(--card-bg);border:1px solid var(--border-medium);color:var(--text-primary);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:15px;transition:all 0.2s;line-height:1;}
+.theme-btn:hover{border-color:rgba(99,102,241,0.5);background:rgba(99,102,241,0.08);}
+
+/* Toasts */
+.toast-wrap{position:fixed;top:72px;right:12px;z-index:9999;display:flex;flex-direction:column;gap:8px;max-width:320px;pointer-events:none;}
+.toast{pointer-events:all;background:var(--bg-tertiary);border-radius:12px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;border-left:3px solid;box-shadow:0 8px 32px rgba(0,0,0,0.25);animation:tIn 0.3s ease;font-size:13px;line-height:1.4;}
+@keyframes tIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
+.toast-success{border-color:#10B981;}.toast-danger{border-color:#F43F5E;}.toast-warning{border-color:#F59E0B;}.toast-info{border-color:#6366F1;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);}
+.modal-box{background:var(--bg-tertiary);border:1px solid var(--border-medium);border-radius:20px;padding:24px;max-width:380px;width:100%;animation:mIn 0.25s ease;}
+@keyframes mIn{from{opacity:0;transform:scale(0.92);}to{opacity:1;transform:scale(1);}}
+
+/* Layout */
+.page-wrap{position:relative;z-index:1;min-height:100vh;}
+.content-wrap{max-width:1160px;margin:0 auto;padding:0 20px;}
+.label-text{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;display:block;}
+footer{position:relative;z-index:1;background:var(--card-bg);border-top:1px solid var(--border-subtle);backdrop-filter:blur(10px);}
+
+/* Light mode specific overrides */
+body.light .gradient-text{animation:none;background:linear-gradient(135deg,#4F46E5 0%,#0EA5E9 50%,#059669 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+body.light .btn-secondary{background:rgba(255,255,255,0.9);border-color:rgba(0,0,0,0.18);color:#0F172A;}
+body.light .btn-secondary:hover{background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.45);color:#4F46E5;}
+body.light .inp{background:rgba(255,255,255,0.95);border-color:rgba(0,0,0,0.15);color:#0F172A;}
+body.light .data-table th{background:rgba(0,0,0,0.04);}
+body.light footer{background:rgba(255,255,255,0.9);}
+body.light .toast{background:#FFFFFF;box-shadow:0 4px 20px rgba(0,0,0,0.12);}
+body.light .toast div{color:#0F172A !important;}
+body.light #mobile-menu{background:rgba(240,244,248,0.98);}
+body.light #statsBar span{-webkit-text-fill-color:#e2e8f0 !important;color:#e2e8f0 !important;}body.light #statsBar #stat-slots,body.light #statsBar #stat-lots,body.light #statsBar #stat-cities{-webkit-text-fill-color:#22D3EE !important;color:#22D3EE !important;background:none !important;}
+body.light #statsBar{background:rgba(15,23,42,0.88) !important;}
+body.light .glass-card{color:#0F172A;}
+body.light .syne{color:#0F172A;}
+body.light .glass-card .syne{color:#0F172A;}
+body.light h1,body.light h2,body.light h3{color:#0F172A;}
+body.light .nav-link{color:#475569;}
+body.light .nav-link:hover{color:#0F172A;background:rgba(0,0,0,0.06);}
+body.light #navbar.scrolled{background:rgba(240,244,248,0.95);border-color:rgba(0,0,0,0.08);}
+body.light .badge-muted{background:rgba(0,0,0,0.06);color:#475569;}
+body.light .occ-bar{background:rgba(0,0,0,0.08);}
+body.light select.inp{background-color:rgba(255,255,255,0.95);}
+body.light .theme-btn{background:rgba(255,255,255,0.9);border-color:rgba(0,0,0,0.15);color:#0F172A;}
+
+@media(max-width:640px){
+  .btn-primary,.btn-secondary{padding:9px 16px;font-size:13px;}
+  .glass-card{border-radius:12px;}
+  .content-wrap{padding:0 14px;}
+  .data-table{font-size:11px;}
+  .data-table th,.data-table td{padding:7px 8px;}
+  .toast-wrap{right:8px;left:8px;max-width:none;}
+}
 </style>
-{% block head_extra %}{% endblock %}
 </head>
 <body>
+<div class="aurora-container" aria-hidden="true">
+  <div class="aurora-blob aurora-1"></div>
+  <div class="aurora-blob aurora-2"></div>
+  <div class="aurora-blob aurora-3"></div>
+</div>
 
-<!-- ─── Top nav ─── -->
-<nav class="nav">
-  <div class="nav-inner">
-    <a class="brand" href="{{ url_for('index') }}">
-      <span class="brand-logo">P</span>
-      <span class="brand-name gradient-text">SpotEasy</span>
-    </a>
-    <div class="nav-links">
-      <a href="{{ url_for('lots_list') }}" class="label-hide">Find Parking</a>
-      {% if current_user.is_authenticated %}
-        {% if current_user.role == 'customer' %}<a href="{{ url_for('customer_dashboard') }}" class="label-hide">Dashboard</a>{% endif %}
-        {% if current_user.role == 'vendor' %}<a href="{{ url_for('vendor_dashboard') }}" class="label-hide">Dashboard</a>{% endif %}
-        {% if current_user.role == 'admin' %}<a href="{{ url_for('admin_dashboard') }}" class="label-hide">Admin</a>{% endif %}
-        <button class="nav-icon-btn" id="notifBtn" title="Notifications">
-          🔔
-          <span class="notif-badge {% if not unread_count %}hidden{% endif %}" id="notifBadge">{{ unread_count }}</span>
+<nav id="navbar">
+  <div class="content-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;height:62px;">
+      <a href="{{ url_for('index') }}" style="text-decoration:none;display:flex;align-items:center;gap:9px;">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,#6366F1,#22D3EE);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🅿</div>
+        <span class="syne gradient-text" style="font-weight:700;font-size:17px;">SpotEasy</span>
+        <span style="font-size:13px;">🇮🇳</span>
+      </a>
+      <!-- Desktop nav -->
+      <div style="display:flex;align-items:center;gap:2px;" id="desknav">
+        {% if current_user.is_authenticated %}
+          {% if current_user.role == 'customer' %}
+            <a href="{{ url_for('lots_list') }}" class="nav-link">Find Parking</a>
+            <a href="{{ url_for('customer_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('account') }}" class="nav-link">Account</a>
+          {% elif current_user.role == 'vendor' %}
+            <a href="{{ url_for('vendor_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('add_lot') }}" class="nav-link">Add Lot</a>
+            <a href="{{ url_for('account') }}" class="nav-link">Account</a>
+          {% elif current_user.role == 'admin' %}
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('admin_db_view') }}" class="nav-link">DB</a>
+            <a href="{{ url_for('lots_list') }}" class="nav-link">Lots</a>
+          {% endif %}
+          <div style="width:1px;height:18px;background:var(--border-subtle);margin:0 4px;"></div>
+          <a href="{{ url_for('logout') }}" class="nav-link" style="color:var(--accent-rose);">Logout</a>
+        {% else %}
+          <a href="{{ url_for('lots_list') }}" class="nav-link">Find Parking</a>
+          <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+          <a href="{{ url_for('register') }}" class="btn-primary btn-sm" style="margin-left:4px;">Register Free</a>
+        {% endif %}
+        <button class="theme-btn" id="themeToggleDesk" onclick="toggleTheme()" title="Toggle theme" style="margin-left:6px;">🌙</button>
+      </div>
+      <!-- Mobile right side -->
+      <div style="display:none;align-items:center;gap:8px;" id="mobileRight">
+        <button class="theme-btn" id="themeToggleMob" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+        <button id="hamburger" style="background:none;border:1px solid var(--border-medium);color:var(--text-primary);cursor:pointer;padding:7px;border-radius:8px;" aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
-        <a href="{{ url_for('account') }}" class="nav-icon-btn" title="Account">👤</a>
-        <a href="{{ url_for('logout') }}" class="nav-icon-btn" title="Logout">⏻</a>
+      </div>
+    </div>
+  </div>
+  <!-- Mobile menu -->
+  <div id="mobile-menu">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      {% if current_user.is_authenticated %}
+        <div style="padding:8px 12px 6px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">{{ current_user.name }}</div>
+        {% if current_user.role == 'customer' %}
+          <a href="{{ url_for('lots_list') }}" class="nav-link">🔍 Find Parking</a>
+          <a href="{{ url_for('customer_dashboard') }}" class="nav-link">📋 Dashboard</a>
+          <a href="{{ url_for('account') }}" class="nav-link">👤 Account</a>
+        {% elif current_user.role == 'vendor' %}
+          <a href="{{ url_for('vendor_dashboard') }}" class="nav-link">📊 Dashboard</a>
+          <a href="{{ url_for('add_lot') }}" class="nav-link">➕ Add Lot</a>
+          <a href="{{ url_for('account') }}" class="nav-link">👤 Account</a>
+        {% elif current_user.role == 'admin' %}
+          <a href="{{ url_for('admin_dashboard') }}" class="nav-link">⚙️ Dashboard</a>
+          <a href="{{ url_for('admin_db_view') }}" class="nav-link">🗄️ DB View</a>
+          <a href="{{ url_for('lots_list') }}" class="nav-link">🏢 All Lots</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" class="nav-link" style="color:var(--accent-rose);">🚪 Logout</a>
       {% else %}
-        <a href="{{ url_for('login') }}">Login</a>
-        <a href="{{ url_for('register') }}" class="btn-primary btn-sm">Register</a>
+        <a href="{{ url_for('lots_list') }}" class="nav-link">🔍 Find Parking</a>
+        <a href="{{ url_for('login') }}" class="nav-link">🔑 Login</a>
+        <a href="{{ url_for('register') }}" class="nav-link" style="color:#818CF8;">✨ Register Free</a>
       {% endif %}
-      <button class="nav-icon-btn" id="themeBtn" title="Toggle theme">🌙</button>
     </div>
   </div>
 </nav>
 
-<!-- ─── Notification dropdown ─── -->
-{% if current_user.is_authenticated %}
-<div class="notif-drop" id="notifDrop">
-  <div class="notif-head">
-    <span class="syne" style="font-weight:700;">Notifications</span>
-    <button class="btn-secondary btn-sm" id="markAllRead">Mark all read</button>
+<!-- Flash toasts -->
+<div class="toast-wrap" id="toastWrap">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="toast toast-{{ cat }}">
+    <span style="font-size:15px;flex-shrink:0;">{% if cat=='success' %}✅{% elif cat=='danger' %}❌{% elif cat=='warning' %}⚠️{% else %}ℹ️{% endif %}</span>
+    <div style="flex:1;">
+      <div style="font-weight:600;color:var(--text-primary);margin-bottom:2px;">{% if cat=='success' %}Success{% elif cat=='danger' %}Error{% elif cat=='warning' %}Warning{% else %}Info{% endif %}</div>
+      <div style="color:var(--text-secondary);font-size:12px;">{{ msg }}</div>
+    </div>
+    <button onclick="this.closest('.toast').remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1;padding:0;flex-shrink:0;">×</button>
   </div>
-  <div id="notifList">
-    <div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px;">Loading…</div>
-  </div>
-  <div style="padding:10px;text-align:center;border-top:1px solid var(--border-subtle);">
-    <a href="{{ url_for('notifications_page') }}" style="font-size:12px;color:var(--indigo);text-decoration:none;">View all</a>
-  </div>
-</div>
-{% endif %}
-
-<!-- ─── Flash messages ─── -->
-{% with msgs = get_flashed_messages(with_categories=true) %}
-{% if msgs %}
-<div class="flash-stack" id="flashStack">
-  {% for cat, msg in msgs %}
-  <div class="flash flash-{{ cat }}">{{ msg }}</div>
   {% endfor %}
-</div>
-{% endif %}
 {% endwith %}
+</div>
 
-<!-- ─── Page content ─── -->
-<main class="container">
-  {% block content %}{% endblock %}
-</main>
+<div class="page-wrap" style="padding-top:62px;">
+  <div class="content-wrap" style="padding-top:28px;padding-bottom:60px;">
+    {% block content %}{% endblock %}
+  </div>
+</div>
 
-<footer class="footer">
-  <div>SpotEasy India · 2026 · Smart Parking</div>
-  <div style="margin-top:8px;">
-    <a href="{{ url_for('lots_list') }}">Find Parking</a>
-    <a href="{{ url_for('register') }}">Register</a>
-    <a href="{{ url_for('terms') }}">Terms</a>
+<footer>
+  <div class="content-wrap" style="padding-top:28px;padding-bottom:28px;">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:26px;height:26px;background:linear-gradient(135deg,#6366F1,#22D3EE);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;">🅿</div>
+        <span class="syne gradient-text" style="font-weight:700;font-size:14px;">SpotEasy</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+        <a href="{{ url_for('lots_list') }}" style="color:var(--text-muted);text-decoration:none;font-size:12px;">Find Parking</a>
+        <a href="{{ url_for('register') }}" style="color:var(--text-muted);text-decoration:none;font-size:12px;">Register</a>
+        <a href="{{ url_for('terms') }}" style="color:var(--text-muted);text-decoration:none;font-size:12px;">Terms</a>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);">India 🇮🇳 2026 · Built with ♥</div>
+    </div>
   </div>
 </footer>
 
+<!-- PWA install banner -->
+<div id="installBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:5000;padding:12px 16px 20px;background:var(--nav-bg);border-top:1px solid var(--border-medium);backdrop-filter:blur(20px);">
+  <div style="display:flex;align-items:center;gap:12px;max-width:500px;margin:0 auto;">
+    <img src="/static/icons/icon-72.png" style="width:40px;height:40px;border-radius:9px;" alt="SpotEasy"/>
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:600;font-size:14px;margin-bottom:2px;color:var(--text-primary);">Install SpotEasy</div>
+      <div style="font-size:12px;color:var(--text-secondary);">Free · Works Offline · PWA</div>
+    </div>
+    <button onclick="doInstall()" class="btn-primary btn-sm">Install</button>
+    <button onclick="dismissInstall()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:22px;padding:0 2px;line-height:1;flex-shrink:0;">×</button>
+  </div>
+</div>
+
 <script>
-/* ───────── THEME TOGGLE ───────── */
+// ── Responsive nav ──
 (function(){
-  var saved = localStorage.getItem('se_theme') || 'dark';
-  if(saved === 'light') document.body.classList.add('light');
-  var btn = document.getElementById('themeBtn');
-  if(btn){
-    btn.textContent = saved === 'light' ? '☀️' : '🌙';
-    btn.onclick = function(){
-      document.body.classList.toggle('light');
-      var now = document.body.classList.contains('light') ? 'light' : 'dark';
-      localStorage.setItem('se_theme', now);
-      btn.textContent = now === 'light' ? '☀️' : '🌙';
-      window.toggleTheme && window.toggleTheme();
-    };
+  var desk=document.getElementById('desknav');
+  var mob=document.getElementById('mobileRight');
+  function checkW(){
+    if(window.innerWidth<640){desk.style.display='none';mob.style.display='flex';}
+    else{desk.style.display='flex';mob.style.display='none';document.getElementById('mobile-menu').classList.remove('open');}
   }
-})();
-
-/* ───────── ANIMATE-IN ───────── */
-setTimeout(function(){
-  document.querySelectorAll('.anim-item').forEach(function(el){el.classList.add('visible');});
-}, 60);
-
-/* ───────── AUTO-DISMISS FLASH ───────── */
-setTimeout(function(){
-  var s = document.getElementById('flashStack');
-  if(s) s.style.transition = 'opacity .4s', s.style.opacity = '0';
-  setTimeout(function(){ s && s.remove(); }, 500);
-}, 4500);
-
-/* ───────── GEOLOCATION (asks every page; remembers permission) ───────── */
-window.SE_LOC = null;
-(function(){
-  if(!navigator.geolocation) return;
-  var prevDecline = parseInt(sessionStorage.getItem('se_geo_declined') || '0', 10);
-  // Re-ask every 60s if previously declined; instant if not yet asked.
-  if(prevDecline && (Date.now() - prevDecline) < 60000) return;
-  navigator.geolocation.getCurrentPosition(function(p){
-    window.SE_LOC = {lat:p.coords.latitude, lng:p.coords.longitude, ts:Date.now()};
-    sessionStorage.setItem('se_geo', JSON.stringify(window.SE_LOC));
-    sessionStorage.removeItem('se_geo_declined');
-    document.dispatchEvent(new CustomEvent('se:geo', {detail: window.SE_LOC}));
-  }, function(err){
-    sessionStorage.setItem('se_geo_declined', Date.now().toString());
-    console.log('[Geo] denied', err && err.message);
-  }, {enableHighAccuracy:false, maximumAge:60000, timeout:8000});
-  // Also load cached if present
-  try{
-    var c = sessionStorage.getItem('se_geo');
-    if(c){ window.SE_LOC = JSON.parse(c); }
-  }catch(e){}
-})();
-
-/* ───────── BROWSER NOTIFICATIONS (request permission once) ───────── */
-{% if current_user.is_authenticated %}
-(function(){
-  if(!('Notification' in window)) return;
-  if(Notification.permission === 'default'){
-    setTimeout(function(){
-      Notification.requestPermission().then(function(p){
-        if(p === 'granted'){
-          new Notification('SpotEasy notifications enabled', {
-            body: 'You will be notified about bookings, approvals and more.',
-            icon: '{{ url_for('static', filename='icons/icon-192.png') }}',
-          });
-        }
-      }).catch(function(){});
-    }, 1500);
-  }
-})();
-{% endif %}
-
-/* ───────── NOTIFICATION POLLING + DROPDOWN ───────── */
-{% if current_user.is_authenticated %}
-(function(){
-  var lastId = 0;
-  var listEl = document.getElementById('notifList');
-  var badge  = document.getElementById('notifBadge');
-  var drop   = document.getElementById('notifDrop');
-  var btn    = document.getElementById('notifBtn');
-  var allItems = [];
-  var browserAllowed = ('Notification' in window) && Notification.permission === 'granted';
-
-  function fmtTime(iso){
-    if(!iso) return '';
-    var d = new Date(iso); var now = new Date();
-    var diff = (now - d) / 1000;
-    if(diff < 60) return 'just now';
-    if(diff < 3600) return Math.floor(diff/60) + 'm ago';
-    if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
-    return d.toLocaleDateString();
-  }
-  function render(){
-    if(!listEl) return;
-    if(!allItems.length){
-      listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px;">No notifications yet.</div>';
-      return;
-    }
-    listEl.innerHTML = allItems.slice(0,15).map(function(n){
-      return '<div class="notif-item '+(n.is_read?'':'unread')+'" data-id="'+n.id+'" data-url="'+(n.url||'')+'">' +
-             '<div class="notif-icon">'+(n.icon||'🔔')+'</div>' +
-             '<div class="notif-text">' +
-               '<div class="notif-title">'+escapeHtml(n.title)+'</div>' +
-               '<div class="notif-body">'+escapeHtml(n.body||'')+'</div>' +
-               '<div class="notif-time">'+fmtTime(n.created_at)+'</div>' +
-             '</div></div>';
-    }).join('');
-    listEl.querySelectorAll('.notif-item').forEach(function(el){
-      el.onclick = function(){
-        var id = el.getAttribute('data-id');
-        var url = el.getAttribute('data-url');
-        fetch('/api/notifications/' + id + '/read', {method:'POST'});
-        if(url) location.href = url;
-      };
-    });
-  }
-  function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
-
-  function poll(){
-    fetch('/api/notifications' + (lastId ? ('?after_id='+lastId) : ''), {cache:'no-store'})
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if(!d.ok) return;
-        if(badge){
-          if(d.unread > 0){ badge.textContent = d.unread; badge.classList.remove('hidden'); }
-          else { badge.classList.add('hidden'); }
-        }
-        if(d.items && d.items.length){
-          // newest first
-          var newOnes = d.items.filter(function(n){ return n.id > lastId; });
-          if(newOnes.length){
-            // prepend
-            allItems = newOnes.concat(allItems).slice(0,30);
-            lastId = Math.max.apply(null, allItems.map(function(n){return n.id;}));
-            render();
-            // Browser native notification for the newest unread
-            if(browserAllowed){
-              newOnes.filter(function(n){return !n.is_read;}).slice(0,2).forEach(function(n){
-                try{
-                  var bn = new Notification('SpotEasy: '+n.title, {
-                    body: n.body || '',
-                    icon: '{{ url_for('static', filename='icons/icon-192.png') }}',
-                    tag: 'se-'+n.id
-                  });
-                  if(n.url) bn.onclick = function(){ window.focus(); location.href = n.url; };
-                }catch(e){}
-              });
-            }
-          }
-        } else if(!allItems.length){
-          // first load with empty
-          render();
-        }
-      }).catch(function(){});
-  }
-
-  if(btn){
-    btn.onclick = function(e){
-      e.stopPropagation();
-      if(drop){ drop.classList.toggle('open'); }
-    };
-  }
-  document.addEventListener('click', function(e){
-    if(drop && !drop.contains(e.target) && e.target !== btn){
-      drop.classList.remove('open');
-    }
+  checkW();window.addEventListener('resize',checkW);
+  document.getElementById('hamburger').addEventListener('click',function(){
+    document.getElementById('mobile-menu').classList.toggle('open');
   });
-  var markAll = document.getElementById('markAllRead');
-  if(markAll){
-    markAll.onclick = function(){
-      fetch('/api/notifications/read', {method:'POST'}).then(function(){
-        allItems.forEach(function(n){n.is_read = true;});
-        render();
-        if(badge){ badge.classList.add('hidden'); badge.textContent = '0'; }
-      });
-    };
-  }
-
-  poll();
-  setInterval(poll, 5000);   // poll every 5s
 })();
-{% endif %}
 
-/* ───────── REFRESH ON BACK/FORWARD (no stale data) ───────── */
-window.addEventListener('pageshow', function(e){
-  if(e.persisted){ location.reload(); }
+// ── Navbar scroll ──
+window.addEventListener('scroll',function(){
+  document.getElementById('navbar').classList.toggle('scrolled',window.scrollY>50);
+},{passive:true});
+
+// ── Toast auto-dismiss ──
+document.querySelectorAll('.toast').forEach(function(t,i){
+  setTimeout(function(){t.style.transition='opacity 0.4s,transform 0.4s';t.style.opacity='0';t.style.transform='translateX(12px)';setTimeout(function(){t.remove();},400);},4000+i*300);
 });
 
-/* ───────── SHARED AUTO-REFRESH HOOK ─────────
-   Pages can opt-in by defining window.SE_AUTOREFRESH = function(){ ... }
-   It will be called every 4 seconds. Built for AJAX background updates. */
+// ── Scroll animations ──
+var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:0.08});
+document.querySelectorAll('.anim-item').forEach(function(el){obs.observe(el);});
+
+// ── Magnetic buttons ──
+document.querySelectorAll('.btn-primary').forEach(function(btn){
+  btn.addEventListener('mousemove',function(e){var r=btn.getBoundingClientRect();var x=((e.clientX-r.left)/r.width-0.5)*10;var y=((e.clientY-r.top)/r.height-0.5)*6;btn.style.transform='translateY(-2px) translate('+x+'px,'+y+'px)';});
+  btn.addEventListener('mouseleave',function(){btn.style.transform='';});
+});
+
+// ── Lucide ──
+if(window.lucide)lucide.createIcons();
+document.addEventListener('DOMContentLoaded',function(){if(window.lucide)lucide.createIcons();});
+
+// ── Theme toggle ──
+var _isLight=false;
+function toggleTheme(){
+  _isLight=!_isLight;
+  if(_isLight){
+    document.body.classList.add('light');
+    document.querySelectorAll('.theme-btn').forEach(function(b){b.textContent='☀️';});
+    localStorage.setItem('se_theme','light');
+  } else {
+    document.body.classList.remove('light');
+    document.querySelectorAll('.theme-btn').forEach(function(b){b.textContent='🌙';});
+    localStorage.setItem('se_theme','dark');
+  }
+}
+// Apply saved theme on load
 (function(){
-  setInterval(function(){
-    if(typeof window.SE_AUTOREFRESH === 'function'){
-      try{ window.SE_AUTOREFRESH(); }catch(e){console.warn('[autorefresh]',e);}
-    }
-  }, 4000);
+  if(localStorage.getItem('se_theme')==='light'){
+    _isLight=false; // will be toggled to true
+    toggleTheme();
+  }
 })();
 
-/* ───────── Service worker registration ───────── */
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').catch(function(){});
+// ── PWA ──
+var deferredPrompt=window._dPrompt;
+var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
+function dismissInstall(){document.getElementById('installBanner').style.display='none';localStorage.setItem('se_hide','1');}
+function doInstall(){
+  var p=deferredPrompt||window._dPrompt;
+  if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){alert('Tap Share \u2191 then "Add to Home Screen"');dismissInstall();return;}
+  if(p){p.prompt();p.userChoice.then(function(){deferredPrompt=null;window._dPrompt=null;dismissInstall();});}
+  else{alert('Tap browser menu \u22EE \u2192 "Add to Home Screen"');dismissInstall();}
 }
+window.addEventListener('appinstalled',dismissInstall);
+if(!isStandalone&&!localStorage.getItem('se_installed')&&!localStorage.getItem('se_hide')){
+  setTimeout(function(){document.getElementById('installBanner').style.display='block';},3500);
+}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
 </script>
 {% block scripts %}{% endblock %}
 </body>

@@ -1,254 +1,194 @@
 {% extends "base.html" %}
 {% block title %}Find Parking — SpotEasy{% endblock %}
-{% block head_extra %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<style>
-#findGrid{display:grid;grid-template-columns:1fr;gap:20px;}
-@media(min-width:920px){
-  #findGrid{grid-template-columns:1fr 1.1fr;align-items:flex-start;}
-  #mapWrap{position:sticky;top:80px;height:calc(100vh - 120px);max-height:680px;}
-  #lotsList{max-height:calc(100vh - 120px);overflow-y:auto;padding-right:6px;}
-  #lotsList::-webkit-scrollbar{width:6px;}
-  #lotsList::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.3);border-radius:99px;}
-}
-#mapWrap{height:340px;}
-.lot-card{padding:18px;}
-.lot-card.dim{opacity:.55;}
-.distance-pill{font-size:11px;color:var(--text-muted);background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:99px;margin-left:6px;}
-.geo-banner{padding:10px 14px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:10px;margin-bottom:14px;font-size:13px;color:#F59E0B;display:flex;justify-content:space-between;align-items:center;gap:10px;}
-.geo-banner button{background:#F59E0B;color:#000;border:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;}
-</style>
-{% endblock %}
-
 {% block content %}
-<div style="margin-bottom:18px;" class="anim-item visible">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+<div style="margin-bottom:24px;" class="anim-item visible">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
     <h1 class="syne" style="font-size:26px;font-weight:700;">Find Parking</h1>
-    <span class="badge badge-green"><span class="pulse-dot pulse-green"></span>Live · auto-refresh</span>
+    <span class="badge badge-green"><span class="pulse-dot pulse-green"></span>Live</span>
   </div>
-  <p style="color:var(--text-secondary);font-size:14px;" id="lotCountText">{{ lots|length }} active lot{{ 's' if lots|length != 1 }} available now</p>
+  <p style="color:var(--text-secondary);font-size:14px;">{{ lots|length }} active lot{{ 's' if lots|length != 1 }} available now</p>
+  <div id="locStatus" style="margin-top:8px;font-size:12px;color:var(--text-muted);display:none;"></div>
 </div>
 
-<div id="geoBanner" class="geo-banner hidden">
-  <span>📍 Allow location to sort lots by nearest to you.</span>
-  <button id="btnAskGeo">Allow</button>
-</div>
-
-<div id="findGrid">
-  <!-- ─── MAP (z-index fixed) ─── -->
-  <div id="mapWrap" class="glass-card map-wrap" style="padding:0;">
-    <div id="map" style="width:100%;height:100%;border-radius:14px;"></div>
+<div style="display:grid;grid-template-columns:1fr;gap:20px;" id="mainGrid">
+  <div class="glass-card" style="padding:0;overflow:hidden;height:300px;border-radius:14px;">
+    <div id="map" style="width:100%;height:100%;"></div>
   </div>
 
-  <!-- ─── LOT CARDS ─── -->
-  <div id="lotsList" style="display:flex;flex-direction:column;gap:14px;">
+  <div style="display:flex;flex-direction:column;gap:14px;">
     {% if lots %}
-      {% for lot in lots %}
-      <div class="glass-card glass-card-hover anim-item visible lot-card" data-lot-id="{{ lot.id }}" data-lat="{{ lot.latitude }}" data-lng="{{ lot.longitude }}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;">
-          <div style="min-width:0;">
-            <h3 class="syne" style="font-size:16px;font-weight:700;margin-bottom:4px;">{{ lot.name }}<span class="distance-pill" data-distance></span></h3>
-            <p style="font-size:12px;color:var(--text-secondary);">📍 {{ lot.address }}, {{ lot.city }}</p>
-          </div>
-          <span class="badge {% if lot.available_count > 0 %}badge-green{% else %}badge-red{% endif %}" data-avail-badge>
-            {% if lot.available_count > 0 %}{{ lot.available_count }} free{% else %}Full{% endif %}
-          </span>
+    {% for lot in lots %}
+    {% set avail_2w = lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length %}
+    {% set avail_4w = lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length %}
+    {% set pct = (lot.available_count / lot.total_slots * 100)|round|int if lot.total_slots > 0 else 0 %}
+    <div class="glass-card glass-card-hover anim-item visible" style="padding:20px;" data-lat="{{ lot.latitude }}" data-lng="{{ lot.longitude }}" data-name="{{ lot.name }}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;">
+        <div style="min-width:0;">
+          <h3 class="syne" style="font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text-primary);">{{ lot.name }}</h3>
+          <p style="font-size:12px;color:var(--text-secondary);">📍 {{ lot.address }}, {{ lot.city }}</p>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:10px 12px;">
-            <div style="font-weight:700;font-size:14px;color:#F59E0B;" data-avail-2w>
-              🛵 {{ lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length }} free
-            </div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">2-Wheeler · ₹{{ lot.rate_2w }}/hr</div>
-          </div>
-          <div style="background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.2);border-radius:10px;padding:10px 12px;">
-            <div style="font-weight:700;font-size:14px;color:#22D3EE;" data-avail-4w>
-              🚗 {{ lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length }} free
-            </div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">4-Wheeler · ₹{{ lot.rate_4w }}/hr</div>
+        <span class="badge {% if lot.available_count > 0 %}badge-green{% else %}badge-red{% endif %}" style="flex-shrink:0;">
+          {% if lot.available_count > 0 %}{{ lot.available_count }} free{% else %}Full{% endif %}
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:20px;">🛵</span>
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#F59E0B;">{{ avail_2w }} free</div>
+            <div style="font-size:11px;color:var(--text-muted);">2-Wheeler · ₹{{ lot.rate_2w }}/hr</div>
           </div>
         </div>
-        <div class="occ-bar" style="margin-bottom:12px;">
-          <div class="occ-fill" data-occ-fill style="width:{{ ((lot.available_count / lot.total_slots * 100)|round|int) if lot.total_slots > 0 else 0 }}%;background:#10B981;"></div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          {% if current_user.is_authenticated and current_user.role == 'customer' %}
-            <a href="{{ url_for('book_slot', lid=lot.id) }}" class="btn-primary" style="flex:1;justify-content:center;padding:11px;" data-book-btn>Book Now →</a>
-          {% elif not current_user.is_authenticated %}
-            <a href="{{ url_for('login') }}" class="btn-primary" style="flex:1;justify-content:center;padding:11px;">Login to Book →</a>
-          {% endif %}
-          <a href="https://www.google.com/maps/dir/?api=1&destination={{ lot.latitude }},{{ lot.longitude }}" target="_blank" class="btn-secondary" style="padding:11px 14px;">🧭 Directions</a>
+        <div style="background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:20px;">🚗</span>
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#22D3EE;">{{ avail_4w }} free</div>
+            <div style="font-size:11px;color:var(--text-muted);">4-Wheeler · ₹{{ lot.rate_4w }}/hr</div>
+          </div>
         </div>
       </div>
-      {% endfor %}
+      <div class="occ-bar" style="margin-bottom:14px;">
+        <div class="occ-fill" style="width:{{ pct }}%;background:{% if pct > 70 %}#10B981{% elif pct > 30 %}#F59E0B{% else %}#F43F5E{% endif %};"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+        <!-- 🧭 GET DIRECTIONS — Google Maps deep link with user's live origin -->
+        <a href="https://www.google.com/maps/dir/?api=1&destination={{ lot.latitude }},{{ lot.longitude }}&travelmode=driving"
+           target="_blank" rel="noopener"
+           class="btn-secondary directions-btn"
+           data-lat="{{ lot.latitude }}" data-lng="{{ lot.longitude }}"
+           style="flex:1;justify-content:center;padding:11px;font-size:14px;min-width:130px;">
+          🧭 Get Directions
+        </a>
+        {% if current_user.is_authenticated and current_user.role == 'customer' %}
+          {% if lot.available_count > 0 %}
+          <a href="{{ url_for('book_slot', lid=lot.id) }}" class="btn-primary"
+             style="flex:1;justify-content:center;padding:11px;font-size:14px;min-width:130px;">Book Now →</a>
+          {% else %}
+          <button disabled style="flex:1;padding:11px;border-radius:10px;background:rgba(128,128,128,0.08);border:1px solid var(--border-subtle);color:var(--text-muted);font-size:14px;cursor:not-allowed;min-width:130px;">Lot Full</button>
+          {% endif %}
+        {% elif not current_user.is_authenticated %}
+        <a href="{{ url_for('login') }}" class="btn-primary" style="flex:1;justify-content:center;padding:11px;font-size:14px;min-width:130px;">Login to Book</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
     {% else %}
     <div class="glass-card" style="padding:48px;text-align:center;">
       <div style="font-size:48px;margin-bottom:12px;">🏗️</div>
-      <h3 class="syne" style="font-size:18px;font-weight:600;margin-bottom:6px;">No lots yet</h3>
-      <p style="color:var(--text-secondary);font-size:14px;">Active lots will appear here.</p>
+      <h3 class="syne" style="font-size:18px;font-weight:600;margin-bottom:8px;color:var(--text-primary);">No lots yet</h3>
+      <p style="color:var(--text-secondary);font-size:14px;">Parking lots will appear here once approved by admin.</p>
     </div>
     {% endif %}
   </div>
 </div>
-{% endblock %}
 
+{% endblock %}
 {% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+@media(min-width:900px){
+  #mainGrid{grid-template-columns:1fr 1fr;}
+  #mainGrid > :first-child{height:calc(100vh - 160px);max-height:600px;position:sticky;top:80px;}
+  #mainGrid > :last-child{max-height:600px;overflow-y:auto;padding-right:2px;}
+  #mainGrid > :last-child::-webkit-scrollbar{width:3px;}
+  #mainGrid > :last-child::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.3);border-radius:99px;}
+}
+</style>
 <script>
 var lotsData = {{ lots_json|tojson|safe }};
-var darkTiles  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19, attribution:'© CartoDB'});
-var lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19, attribution:'© CartoDB'});
-var map = L.map('map', {zoomControl:true, attributionControl:false}).setView([22.9734, 78.6569], 5);
-(document.body.classList.contains('light') ? lightTiles : darkTiles).addTo(map);
-window.toggleTheme = function(){
-  if(document.body.classList.contains('light')){
-    map.removeLayer(darkTiles); lightTiles.addTo(map);
-  } else {
-    map.removeLayer(lightTiles); darkTiles.addTo(map);
-  }
-};
+var userLat = null, userLng = null;
 
-var markersById = {};
+var darkTiles  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
+var lightTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
+var map = L.map('map',{zoomControl:true,attributionControl:false}).setView([22.9734,78.6569],5);
+
+function updateMapTheme(){
+  var isLight = document.body.classList.contains('light');
+  if(isLight){ map.removeLayer(darkTiles); lightTiles.addTo(map); }
+  else { map.removeLayer(lightTiles); darkTiles.addTo(map); }
+}
+darkTiles.addTo(map);
+var origToggle = window.toggleTheme;
+window.toggleTheme = function(){ if(origToggle) origToggle(); setTimeout(updateMapTheme,50); };
+setTimeout(updateMapTheme,100);
 
 function makeIcon(avail){
   var c = avail > 0 ? '#10B981' : '#F43F5E';
-  return L.divIcon({
-    html:'<div style="width:26px;height:26px;border-radius:50%;background:'+c+';border:3px solid rgba(255,255,255,0.95);box-shadow:0 2px 10px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;">P</div>',
-    iconSize:[26,26], iconAnchor:[13,13], className:''
-  });
+  return L.divIcon({html:'<div style="width:22px;height:22px;border-radius:50%;background:'+c+';border:3px solid rgba(255,255,255,0.9);box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>',iconSize:[22,22],iconAnchor:[11,11],className:''});
 }
 
-function placeMarkers(data){
-  // Remove old
-  Object.keys(markersById).forEach(function(id){ map.removeLayer(markersById[id]); });
-  markersById = {};
+if(lotsData.length > 0){
   var bounds = [];
-  data.forEach(function(lot){
-    var m = L.marker([lot.lat, lot.lng], {icon:makeIcon(lot.available)}).addTo(map);
-    m.bindPopup(
-      '<div style="font-family:DM Sans,sans-serif;padding:4px;min-width:170px;">' +
-      '<div style="font-weight:700;font-size:14px;margin-bottom:3px;">'+lot.name+'</div>' +
-      '<div style="font-size:12px;color:#666;margin-bottom:6px;">📍 '+lot.city+'</div>' +
-      '<div style="font-size:13px;font-weight:600;color:'+(lot.available>0?'#10B981':'#F43F5E')+';margin-bottom:6px;">'+lot.available+' / '+lot.total+' free</div>' +
-      '<div style="display:flex;gap:6px;font-size:11px;color:#666;margin-bottom:8px;">🛵 '+lot.avail_2w+' · 🚗 '+lot.avail_4w+'</div>' +
-      {% if current_user.is_authenticated and current_user.role == 'customer' %}
-      '<a href="/book/'+lot.id+'" style="display:inline-block;background:#16a34a;color:white;padding:6px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">Book Now →</a>' +
-      {% else %}
-      '<a href="{{ url_for('login') }}" style="display:inline-block;background:#16a34a;color:white;padding:6px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">Login to Book</a>' +
-      {% endif %}
-      '</div>'
-    );
-    markersById[lot.id] = m;
+  lotsData.forEach(function(lot){
+    var m = L.marker([lot.lat, lot.lng], {icon: makeIcon(lot.available)}).addTo(map);
+    m.bindPopup('<div style="font-family:DM Sans,sans-serif;padding:4px;min-width:170px;">'+
+      '<div style="font-weight:700;font-size:14px;margin-bottom:4px;">'+lot.name+'</div>'+
+      '<div style="font-size:12px;color:#666;margin-bottom:6px;">'+lot.city+'</div>'+
+      '<div style="font-size:13px;font-weight:600;color:'+(lot.available>0?'#10B981':'#F43F5E')+';margin-bottom:6px;">'+lot.available+' / '+lot.total+' free</div>'+
+      '<a href="https://www.google.com/maps/dir/?api=1&destination='+lot.lat+','+lot.lng+'&travelmode=driving" target="_blank" rel="noopener" style="display:inline-block;background:#6366F1;color:white;padding:5px 10px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">🧭 Directions</a>'+
+      '</div>');
     bounds.push([lot.lat, lot.lng]);
   });
-  if(bounds.length){
-    try{ map.fitBounds(bounds, {padding:[40,40], maxZoom:14}); }catch(e){}
+  if(bounds.length) map.fitBounds(bounds, {padding:[40,40]});
+}
+
+// ─── 🚨 FORCE LIVE LOCATION REQUEST ON EVERY LOAD ───
+function setLocStatus(text, color){
+  var el = document.getElementById('locStatus');
+  if(!el) return;
+  el.style.display = text ? 'block' : 'none';
+  el.textContent   = text || '';
+  if(color) el.style.color = color;
+}
+
+function requestLiveLocation(){
+  if(!navigator.geolocation){
+    setLocStatus('⚠️ Your browser does not support geolocation.', '#F59E0B');
+    return;
   }
+  setLocStatus('📡 Requesting your location...', 'var(--text-muted)');
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      var ll  = [userLat, userLng];
+      L.circleMarker(ll, {radius:9, fillColor:'#6366F1', color:'#fff', weight:2, fillOpacity:0.95})
+        .addTo(map).bindPopup('📍 You are here').openPopup();
+      map.setView(ll, 13);
+      setLocStatus('📍 Location detected — showing nearest lots', '#10B981');
+      // Upgrade Get Directions buttons to use real origin
+      document.querySelectorAll('.directions-btn').forEach(function(a){
+        var lat = a.dataset.lat, lng = a.dataset.lng;
+        a.href = 'https://www.google.com/maps/dir/?api=1&origin=' + userLat + ',' + userLng +
+                 '&destination=' + lat + ',' + lng + '&travelmode=driving';
+      });
+    },
+    function(err){
+      var msg = '⚠️ Location permission denied. Showing all lots without distance ordering.';
+      if(err.code === 1) msg = '⚠️ Location blocked. Please enable location permission in your browser settings and reload.';
+      else if(err.code === 2) msg = '⚠️ Location unavailable. Please check your GPS / network.';
+      else if(err.code === 3) msg = '⚠️ Location request timed out. Tap the 📍 button on the map to retry.';
+      setLocStatus(msg, '#F59E0B');
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }   // maximumAge:0 forces fresh location every load
+  );
 }
 
-placeMarkers(lotsData);
+// Manual locate-me button
+var LocateControl = L.Control.extend({
+  options: {position:'topright'},
+  onAdd: function(){
+    var c = L.DomUtil.create('div','leaflet-bar leaflet-control leaflet-control-custom');
+    c.style.cssText = 'background:white;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;';
+    c.innerHTML = '📍'; c.title = 'Locate Me';
+    c.onclick = function(){ requestLiveLocation(); };
+    return c;
+  }
+});
+map.addControl(new LocateControl());
 
-// User location pin
-var userMarker = null;
-function placeUserMarker(){
-  if(!window.SE_LOC) return;
-  if(userMarker) map.removeLayer(userMarker);
-  userMarker = L.circleMarker([SE_LOC.lat, SE_LOC.lng], {
-    radius:9, fillColor:'#6366F1', color:'#fff', weight:3, fillOpacity:0.95
-  }).addTo(map).bindPopup('📍 You are here');
-  // Sort lot cards by distance
-  sortByDistance();
-}
-document.addEventListener('se:geo', placeUserMarker);
-if(window.SE_LOC) placeUserMarker();
-else {
-  // Show banner if no location yet
-  var banner = document.getElementById('geoBanner');
-  if(banner) banner.classList.remove('hidden');
-  document.getElementById('btnAskGeo').onclick = function(){
-    if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(function(p){
-        window.SE_LOC = {lat:p.coords.latitude, lng:p.coords.longitude, ts:Date.now()};
-        sessionStorage.setItem('se_geo', JSON.stringify(window.SE_LOC));
-        sessionStorage.removeItem('se_geo_declined');
-        banner.classList.add('hidden');
-        placeUserMarker();
-      }, function(){ alert('Could not get your location.'); });
-    }
-  };
-}
-
-function haversine(a, b){
-  var R=6371, toR=function(d){return d*Math.PI/180;};
-  var dLat=toR(b.lat-a.lat), dLng=toR(b.lng-a.lng);
-  var s=Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
-  return 2*R*Math.asin(Math.sqrt(s));
-}
-
-function sortByDistance(){
-  if(!window.SE_LOC) return;
-  var list = document.getElementById('lotsList');
-  if(!list) return;
-  var cards = Array.prototype.slice.call(list.querySelectorAll('.lot-card'));
-  cards.forEach(function(c){
-    var lat = parseFloat(c.getAttribute('data-lat')), lng = parseFloat(c.getAttribute('data-lng'));
-    var d = haversine(SE_LOC, {lat:lat,lng:lng});
-    c.dataset.distance = d.toFixed(2);
-    var pill = c.querySelector('[data-distance]');
-    if(pill) pill.textContent = d < 1 ? Math.round(d*1000)+' m' : d.toFixed(1)+' km';
-  });
-  cards.sort(function(a,b){ return parseFloat(a.dataset.distance) - parseFloat(b.dataset.distance); });
-  cards.forEach(function(c){ list.appendChild(c); });
-}
-
-/* AJAX background refresh — every 4s via base.html hook */
-window.SE_AUTOREFRESH = function(){
-  fetch('/api/lots', {cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
-    if(!d.ok || !d.lots) return;
-    lotsData = d.lots;
-    document.getElementById('lotCountText').textContent =
-      d.lots.length + ' active lot' + (d.lots.length===1?'':'s') + ' available now';
-    // Update markers
-    placeMarkers(d.lots);
-    // Update each card
-    d.lots.forEach(function(lot){
-      var card = document.querySelector('.lot-card[data-lot-id="'+lot.id+'"]');
-      if(!card) return;
-      var badge = card.querySelector('[data-avail-badge]');
-      if(badge){
-        if(lot.available > 0){
-          badge.textContent = lot.available + ' free';
-          badge.className = 'badge badge-green';
-        } else {
-          badge.textContent = 'Full';
-          badge.className = 'badge badge-red';
-        }
-      }
-      var a2 = card.querySelector('[data-avail-2w]');
-      if(a2) a2.innerHTML = '🛵 ' + lot.avail_2w + ' free';
-      var a4 = card.querySelector('[data-avail-4w]');
-      if(a4) a4.innerHTML = '🚗 ' + lot.avail_4w + ' free';
-      var fill = card.querySelector('[data-occ-fill]');
-      if(fill && lot.total>0){
-        var pct = Math.round(lot.available / lot.total * 100);
-        fill.style.width = pct + '%';
-        fill.style.background = pct > 50 ? '#10B981' : (pct > 20 ? '#F59E0B' : '#F43F5E');
-      }
-      var btn = card.querySelector('[data-book-btn]');
-      if(btn){
-        if(lot.available <= 0){
-          btn.textContent = 'Lot Full';
-          btn.style.opacity = '0.5';
-          btn.style.pointerEvents = 'none';
-        } else {
-          btn.textContent = 'Book Now →';
-          btn.style.opacity = '1';
-          btn.style.pointerEvents = 'auto';
-        }
-      }
-    });
-    sortByDistance();
-  }).catch(function(){});
-};
+// 🚨 Force-request on EVERY page load
+window.addEventListener('load', function(){ requestLiveLocation(); });
 </script>
 {% endblock %}
