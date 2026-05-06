@@ -35,18 +35,14 @@ load_dotenv()
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
-
 def get_site_url():
     """Get the public URL - works on Railway, Render, and local."""
-    # Railway sets RAILWAY_PUBLIC_DOMAIN (domain only, no protocol)
     railway = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '').strip()
     if railway:
         return 'https://' + railway if not railway.startswith('http') else railway
-    # Render sets full URL
     render = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
     if render:
         return render
-    # Custom domain env var
     custom = os.environ.get('SITE_URL', '').strip()
     if custom:
         return custom
@@ -184,6 +180,8 @@ def send_email(to_email, subject, html_body):
         print(f"[Email] Failed: {e}")
         return False
 
+# --- ROUTES ---
+
 @app.route('/')
 def index():
     try:
@@ -201,7 +199,6 @@ def index():
         available_slots=available_slots, total_cities=total_cities,
         active_bookings=active_bookings)
 
-# Live stats API — called by JS every 30s
 @app.route('/api/live-stats')
 def api_live_stats():
     try:
@@ -269,6 +266,8 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('index'))
+
+# --- ADMIN ROUTES ---
 
 @app.route('/admin/dashboard')
 @login_required
@@ -371,15 +370,6 @@ def admin_delete_reservation(rid):
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('admin_dashboard'))
 
-@app.route('/admin/db')
-@login_required
-def admin_db_view():
-    if current_user.role != 'admin': return redirect(url_for('index'))
-    users        = User.query.all()
-    lots         = ParkingLot.query.all()
-    reservations = Reservation.query.order_by(Reservation.created_at.desc()).all()
-    return render_template('db_view.html', users=users, lots=lots, reservations=reservations)
-
 @app.route('/admin/notify', methods=['GET', 'POST'])
 @login_required
 def admin_notify():
@@ -419,43 +409,7 @@ def api_admin_stats():
                     'active_bookings': active_bookings, 'total_revenue': float(total_revenue),
                     'new_vendors': new_vendors, 'new_lots': new_lots})
 
-@app.route('/api/vendor/stats/<int:vid>')
-@login_required
-def api_vendor_stats(vid):
-    if current_user.role != 'vendor' or current_user.id != vid:
-        return jsonify({'error': 'Forbidden'}), 403
-    lots = ParkingLot.query.filter_by(owner_id=vid).all()
-    total_slots    = sum(lot.total_slots for lot in lots)
-    occupied_slots = sum(lot.occupied_count for lot in lots)
-    active_bookings = Reservation.query.join(ParkingSlot).join(ParkingLot)\
-                      .filter(ParkingLot.owner_id==vid, Reservation.status=='active').count()
-    total_revenue = db.session.query(db.func.sum(Reservation.amount_paid))\
-                    .join(ParkingSlot).join(ParkingLot).filter(ParkingLot.owner_id==vid).scalar() or 0
-    return jsonify({'total_slots': total_slots, 'occupied_slots': occupied_slots,
-                    'free_slots': total_slots - occupied_slots, 'active_bookings': active_bookings,
-                    'total_revenue': float(total_revenue),
-                    'lots': [{'id': l.id, 'name': l.name, 'free': l.available_count, 'occupied': l.occupied_count} for l in lots]})
-
-@app.route('/api/customer/stats')
-@login_required
-def api_customer_stats():
-    if current_user.role != 'customer': return jsonify({}), 403
-    reservations = Reservation.query.filter_by(customer_id=current_user.id).all()
-    total_spent  = sum(float(r.amount_paid or 0) for r in reservations if r.status == 'completed')
-    return jsonify({'total_bookings': len(reservations),
-                    'active': sum(1 for r in reservations if r.status == 'active'),
-                    'completed': sum(1 for r in reservations if r.status == 'completed'),
-                    'total_spent': int(round(total_spent))})
-
-@app.route('/api/lot/<int:lid>/slots')
-@login_required
-def api_lot_slots(lid):
-    lot = db.session.get(ParkingLot, lid)
-    if not lot: return jsonify({'error': 'Not found'}), 404
-    return jsonify({'slots': [s.to_dict() for s in lot.slots], 'available': lot.available_count,
-                    'occupied': lot.occupied_count, 'total': lot.total_slots,
-                    'avail_2w': sum(1 for s in lot.slots if s.slot_type=='2w' and s.status=='available'),
-                    'avail_4w': sum(1 for s in lot.slots if s.slot_type=='4w' and s.status=='available')})
+# --- VENDOR ROUTES ---
 
 @app.route('/vendor/dashboard')
 @login_required
@@ -530,6 +484,25 @@ def toggle_slot(sid):
     db.session.commit()
     return jsonify({'id': slot.id, 'status': slot.status})
 
+@app.route('/api/vendor/stats/<int:vid>')
+@login_required
+def api_vendor_stats(vid):
+    if current_user.role != 'vendor' or current_user.id != vid:
+        return jsonify({'error': 'Forbidden'}), 403
+    lots = ParkingLot.query.filter_by(owner_id=vid).all()
+    total_slots    = sum(lot.total_slots for lot in lots)
+    occupied_slots = sum(lot.occupied_count for lot in lots)
+    active_bookings = Reservation.query.join(ParkingSlot).join(ParkingLot)\
+                      .filter(ParkingLot.owner_id==vid, Reservation.status=='active').count()
+    total_revenue = db.session.query(db.func.sum(Reservation.amount_paid))\
+                    .join(ParkingSlot).join(ParkingLot).filter(ParkingLot.owner_id==vid).scalar() or 0
+    return jsonify({'total_slots': total_slots, 'occupied_slots': occupied_slots,
+                    'free_slots': total_slots - occupied_slots, 'active_bookings': active_bookings,
+                    'total_revenue': float(total_revenue),
+                    'lots': [{'id': l.id, 'name': l.name, 'free': l.available_count, 'occupied': l.occupied_count} for l in lots]})
+
+# --- CUSTOMER ROUTES ---
+
 @app.route('/customer/dashboard')
 @login_required
 def customer_dashboard():
@@ -542,54 +515,95 @@ def lots_list():
     lots = ParkingLot.query.filter_by(is_active=True).all()
     return render_template('lots_list.html', lots=lots, lots_json=[l.to_dict() for l in lots])
 
-@app.route('/lot/<int:lid>/book', methods=['GET', 'POST'])
+# 🚨 PATCH 1B: UPDATED book_slot ROUTE
+@app.route('/book/<int:lid>', methods=['GET', 'POST'])
 @login_required
 def book_slot(lid):
     if current_user.role != 'customer':
-        flash('Only customers can book slots.', 'warning')
-        return redirect(url_for('index'))
+        flash('Only customers can book slots.', 'error')
+        return redirect_by_role()
+
     lot = db.session.get(ParkingLot, lid)
     if not lot or not lot.is_active:
-        flash('Parking lot not available.', 'danger')
+        flash('Parking lot not available.', 'error')
         return redirect(url_for('lots_list'))
-    available_slots = [s for s in lot.slots if s.status == 'available']
+
+    is_json = request.headers.get('Accept') == 'application/json'
+
     if request.method == 'POST':
-        slot_id      = request.form.get('slot_id', '').strip()
-        vehicle_no   = request.form.get('vehicle_no', '').strip().upper()
-        vehicle_type = request.form.get('vehicle_type', '4w')
-        if not slot_id or not vehicle_no:
-            if request.headers.get('Accept') == 'application/json':
-                return jsonify({'error': 'Please select a slot and enter your vehicle number.'}), 400
-            flash('Please select a slot and enter your vehicle number.', 'danger')
-            return render_template('book_slot.html', lot=lot, slots=available_slots)
-        slot = db.session.get(ParkingSlot, int(slot_id))
-        if not slot or slot.status != 'available':
-            if request.headers.get('Accept') == 'application/json':
-                return jsonify({'error': 'Slot no longer available.'}), 400
-            flash('Slot no longer available.', 'warning')
-            return redirect(url_for('book_slot', lid=lid))
-        slot.status = 'occupied'
-        res = Reservation(customer_id=current_user.id, slot_id=slot.id,
-                          vehicle_no=vehicle_no, vehicle_type=vehicle_type, entry_time=datetime.utcnow())
-        db.session.add(res); db.session.commit()
-        flash('Booking confirmed!', 'success')
         try:
-            site_url = get_site_url()
-            rate = lot.rate_2w if slot.slot_type == '2w' else lot.rate_4w
-            html = f'<div style="font-family:Inter,sans-serif;padding:24px;"><div style="background:#16a34a;border-radius:16px;padding:20px;text-align:center;"><h1 style="color:white;margin:0;">Booking Confirmed!</h1></div><div style="background:white;padding:20px;border-radius:12px;margin-top:12px;border:1px solid #e5e7eb;"><p>Hi <b>{current_user.name}</b>,</p><p><b>Slot:</b> {slot.label}</p><p><b>Lot:</b> {lot.name}, {lot.city}</p><p><b>Vehicle:</b> {res.vehicle_no}</p><p><b>Entry:</b> {res.entry_time.strftime("%d %b %Y, %I:%M %p")} IST</p><p><b>Rate:</b> Rs.{rate}/hr</p><p style="color:#dc2626;"><b>First 15 minutes FREE!</b></p><a href="{site_url}/reservation/{res.id}/pass" style="display:block;background:#16a34a;color:white;text-align:center;padding:12px;border-radius:10px;margin-top:12px;text-decoration:none;font-weight:800;">View QR Pass</a></div></div>'
-            send_email(current_user.email, f'Booking Confirmed - {slot.label} | SpotEasy', html)
-            vendor = lot.owner
-            if vendor and vendor.email:
-                vhtml = f'<div style="font-family:Inter,sans-serif;padding:24px;"><div style="background:#2563eb;border-radius:16px;padding:20px;text-align:center;"><h1 style="color:white;margin:0;">New Booking!</h1></div><div style="background:white;padding:20px;border-radius:12px;margin-top:12px;border:1px solid #e5e7eb;"><p><b>Customer:</b> {current_user.name}</p><p><b>Lot:</b> {lot.name}</p><p><b>Slot:</b> {slot.label}</p><p><b>Vehicle:</b> {res.vehicle_no}</p><p><b>Entry:</b> {res.entry_time.strftime("%d %b %Y, %I:%M %p")} IST</p></div></div>'
-                send_email(vendor.email, f'New Booking at {lot.name} | SpotEasy', vhtml)
+            vehicle_type = (request.form.get('vehicle_type') or '').strip().lower()
+            vehicle_no   = (request.form.get('vehicle_no') or '').strip().upper()
+            slot_id      = request.form.get('slot_id')
+
+            if vehicle_type not in ('2w', '4w'):
+                msg = 'Please choose a valid vehicle type.'
+                if is_json: return jsonify({'error': msg}), 400
+                flash(msg, 'error'); return redirect(url_for('book_slot', lid=lid))
+
+            if not vehicle_no or len(vehicle_no) < 4:
+                msg = 'Please enter a valid vehicle number.'
+                if is_json: return jsonify({'error': msg}), 400
+                flash(msg, 'error'); return redirect(url_for('book_slot', lid=lid))
+
+            if not slot_id:
+                msg = 'Please select a slot.'
+                if is_json: return jsonify({'error': msg}), 400
+                flash(msg, 'error'); return redirect(url_for('book_slot', lid=lid))
+
+            slot = db.session.get(ParkingSlot, int(slot_id))
+            if not slot or slot.lot_id != lot.id:
+                msg = 'Invalid slot.'
+                if is_json: return jsonify({'error': msg}), 400
+                flash(msg, 'error'); return redirect(url_for('book_slot', lid=lid))
+
+            # 🚨 SERVER-SIDE STRICT VEHICLE↔SLOT TYPE CHECK
+            if slot.slot_type != vehicle_type:
+                expected = '2-Wheeler' if slot.slot_type == '2w' else '4-Wheeler'
+                msg = f'Vehicle/slot mismatch. This slot is reserved for {expected} only.'
+                if is_json: return jsonify({'error': msg}), 400
+                flash(msg, 'error'); return redirect(url_for('book_slot', lid=lid))
+
+            if slot.status != 'available':
+                msg = 'Sorry, that slot was just taken. Please pick another.'
+                if is_json: return jsonify({'error': msg}), 409
+                flash(msg, 'error'); return redirect(url_for('book_slot', lid=lid))
+
+            existing = Reservation.query.filter_by(customer_id=current_user.id, status='active').first()
+            if existing:
+                msg = 'You already have an active booking. Please check out first.'
+                if is_json:
+                    return jsonify({'error': msg, 'redirect_url': url_for('digital_pass', rid=existing.id)}), 409
+                flash(msg, 'error'); return redirect(url_for('digital_pass', rid=existing.id))
+
+            res = Reservation(
+                customer_id  = current_user.id,
+                slot_id      = slot.id,
+                vehicle_type = vehicle_type,
+                vehicle_no   = vehicle_no,
+                entry_time   = datetime.utcnow(),
+                status       = 'active',
+            )
+            slot.status = 'occupied'
+            db.session.add(res)
+            db.session.commit()
+
+            redirect_url = url_for('digital_pass', rid=res.id)
+            if is_json:
+                return jsonify({'success': True, 'redirect_url': redirect_url})
+            return redirect(redirect_url)
+
         except Exception as e:
-            print(f'[Email] Failed: {e}')
-        
-        if request.headers.get('Accept') == 'application/json':
-            return jsonify({'success': True, 'redirect_url': url_for('digital_pass', rid=res.id)})
-            
-        return redirect(url_for('digital_pass', rid=res.id))
-    return render_template('book_slot.html', lot=lot, slots=available_slots)
+            db.session.rollback()
+            print(f"[BookSlot] Error: {e}")
+            msg = 'Booking failed. Please try again.'
+            if is_json: return jsonify({'error': msg}), 500
+            flash(msg, 'error')
+            return redirect(url_for('book_slot', lid=lid))
+
+    # GET — show form
+    slots = [s for s in lot.slots if s.status == 'available']
+    return render_template('book_slot.html', lot=lot, slots=slots)
 
 @app.route('/reservation/<int:rid>/pass')
 @login_required
@@ -602,40 +616,95 @@ def digital_pass(rid):
                            qr_b64=generate_qr_base64(res.qr_token),
                            wa_url=build_whatsapp_url(res))
 
-@app.route('/reservation/<int:rid>/checkout', methods=['POST'])
+# 🚨 PATCH 1C: UPDATED checkout ROUTE
+@app.route('/checkout/<int:rid>', methods=['POST'])
 @login_required
 def checkout(rid):
-    res = db.session.get(Reservation, rid)
-    if not res or res.status != 'active':
-        flash('Reservation not found or already completed.', 'danger')
-        return redirect(url_for('customer_dashboard'))
-    if current_user.role == 'customer' and res.customer_id != current_user.id:
-        flash('Not authorised.', 'danger')
-        return redirect(url_for('index'))
-    payment_method = request.form.get('payment_method', 'cash')
-    exit_time      = datetime.utcnow()
-    res.exit_time  = exit_time
-    res.status     = 'completed'
-    raw_amount     = calculate_bill(res.entry_time, exit_time, res.vehicle_type,
-                                    res.slot.lot.rate_2w, res.slot.lot.rate_4w)
-    res.amount_paid    = Decimal(str(round(float(raw_amount))))
-    res.payment_method = payment_method
-    res.slot.status    = 'available'
-    db.session.commit()
-    flash(f'Checkout done! Amount: Rs.{res.amount_paid} ({payment_method})', 'success')
+    is_json = request.headers.get('Accept') == 'application/json'
     try:
-        site_url = get_site_url()
-        mins = int((exit_time - res.entry_time).total_seconds() / 60)
-        dur  = f"{mins//60}h {mins%60}m" if mins >= 60 else f"{mins} minutes"
-        html = f'<div style="font-family:Inter,sans-serif;padding:24px;"><div style="background:#111827;border-radius:16px;padding:20px;text-align:center;"><h1 style="color:white;margin:0;">Checkout Complete!</h1></div><div style="background:white;padding:20px;border-radius:12px;margin-top:12px;border:1px solid #e5e7eb;"><p>Hi <b>{current_user.name}</b>,</p><p><b>Slot:</b> {res.slot.label}</p><p><b>Lot:</b> {res.slot.lot.name}</p><p><b>Vehicle:</b> {res.vehicle_no}</p><p><b>Duration:</b> {dur}</p><p><b>Payment:</b> {payment_method.upper()}</p><p style="font-size:18px;font-weight:900;color:#16a34a;"><b>Total: Rs.{res.amount_paid}</b></p><a href="{site_url}/customer/dashboard" style="display:block;background:#111827;color:white;text-align:center;padding:12px;border-radius:10px;margin-top:12px;text-decoration:none;font-weight:800;">View History</a></div></div>'
-        send_email(current_user.email, f'Bill Receipt - Rs.{res.amount_paid} | SpotEasy', html)
+        res = db.session.get(Reservation, rid)
+        if not res or res.customer_id != current_user.id:
+            msg = 'Reservation not found.'
+            if is_json: return jsonify({'error': msg}), 404
+            flash(msg, 'error'); return redirect_by_role()
+
+        if res.status != 'active':
+            msg = 'This booking is already checked out.'
+            if is_json: return jsonify({'error': msg}), 400
+            flash(msg, 'error'); return redirect(url_for('digital_pass', rid=rid))
+
+        # 🟢 Capture payment method securely from form (cash / upi)
+        pay_method = (request.form.get('payment_method') or 'cash').strip().lower()
+        if pay_method not in ('cash', 'upi'):
+            pay_method = 'cash'
+
+        exit_time = datetime.utcnow()
+        lot = res.slot.lot
+        amount = calculate_bill(res.entry_time, exit_time, res.vehicle_type, lot.rate_2w, lot.rate_4w)
+
+        res.exit_time      = exit_time
+        res.amount_paid    = amount
+        res.status         = 'completed'
+        res.payment_method = pay_method
+        if res.slot:
+            res.slot.status = 'available'
+        db.session.commit()
+
+        redirect_url = url_for('digital_pass', rid=res.id)
+        if is_json:
+            return jsonify({
+                'success': True,
+                'redirect_url': redirect_url,
+                'amount': str(amount),
+                'payment_method': pay_method
+            })
+        flash(f'Checkout complete. ₹{amount} via {pay_method.upper()}.', 'success')
+        return redirect(redirect_url)
+
     except Exception as e:
-        print(f'[Checkout Email] Failed: {e}')
-        
-    if request.headers.get('Accept') == 'application/json':
-        return jsonify({'success': True, 'redirect_url': url_for('digital_pass', rid=rid)})
-        
-    return redirect(url_for('digital_pass', rid=rid))
+        db.session.rollback()
+        print(f"[Checkout] Error: {e}")
+        msg = 'Checkout failed. Please try again.'
+        if is_json: return jsonify({'error': msg}), 500
+        flash(msg, 'error')
+        return redirect(url_for('digital_pass', rid=rid))
+
+# --- COMMON API/SYSTEM ROUTES ---
+
+# 🚨 PATCH 1A: UPDATED api_lot_slots ROUTE
+@app.route('/api/lot/<int:lid>/slots')
+@login_required
+def api_lot_slots(lid):
+    """Live slot status for auto-refresh on book_slot screen (polled every 3s)."""
+    try:
+        lot = db.session.get(ParkingLot, lid)
+        if not lot:
+            return jsonify({'error': 'Not found'}), 404
+        return jsonify({
+            'ok': True,
+            'lot_id': lot.id,
+            'slots': [s.to_dict() for s in lot.slots],
+            'available': lot.available_count,
+            'occupied': lot.occupied_count,
+            'total': lot.total_slots,
+            'avail_2w': sum(1 for s in lot.slots if s.slot_type == '2w' and s.status == 'available'),
+            'avail_4w': sum(1 for s in lot.slots if s.slot_type == '4w' and s.status == 'available'),
+            'ts': int(time.time())
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/customer/stats')
+@login_required
+def api_customer_stats():
+    if current_user.role != 'customer': return jsonify({}), 403
+    reservations = Reservation.query.filter_by(customer_id=current_user.id).all()
+    total_spent  = sum(float(r.amount_paid or 0) for r in reservations if r.status == 'completed')
+    return jsonify({'total_bookings': len(reservations),
+                    'active': sum(1 for r in reservations if r.status == 'active'),
+                    'completed': sum(1 for r in reservations if r.status == 'completed'),
+                    'total_spent': int(round(total_spent))})
 
 @app.route('/account', methods=['GET', 'POST'])
 @login_required
@@ -721,10 +790,6 @@ def health():
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory('static/icons', 'icon-96.png', mimetype='image/png')
-
-@app.route('/loading')
-def loading():
-    return send_from_directory('static', 'loading.html')
 
 @app.route('/terms')
 def terms():
