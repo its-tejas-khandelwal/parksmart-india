@@ -8,7 +8,6 @@
     <p style="color:var(--text-secondary);font-size:14px;margin-top:3px;">📍 {{ lot.name }}, {{ lot.city }}</p>
   </div>
 
-  <!-- Lot info strip -->
   <div class="glass-card anim-item visible" style="padding:16px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
     <div style="display:flex;align-items:center;gap:8px;">
       <span style="font-size:18px;">🛵</span>
@@ -26,13 +25,10 @@
       </div>
     </div>
     <div style="width:1px;height:30px;background:var(--border-subtle);"></div>
-    <div style="font-size:12px;color:#10B981;font-weight:600;display:flex;align-items:center;gap:4px;">
-      ⏱️ 15 min FREE grace
-    </div>
+    <div style="font-size:12px;color:#10B981;font-weight:600;display:flex;align-items:center;gap:4px;">⏱️ 15 min FREE grace</div>
   </div>
 
-  <form method="post" class="anim-item visible" id="bookForm">
-    <!-- Vehicle type -->
+  <form method="post" class="anim-item visible" id="bookForm" data-lot-id="{{ lot.id }}">
     <div class="glass-card" style="padding:20px;margin-bottom:14px;">
       <label class="label-text" style="margin-bottom:10px;display:block;">Vehicle Type</label>
       <div style="display:flex;gap:10px;">
@@ -49,21 +45,35 @@
       </div>
     </div>
 
-    <!-- Vehicle number -->
     <div class="glass-card" style="padding:20px;margin-bottom:14px;">
       <label class="label-text">Vehicle Number *</label>
-      <input type="text" name="vehicle_no" class="inp" placeholder="UP32 AB 1234" required style="text-transform:uppercase;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;" oninput="this.value=this.value.toUpperCase()"/>
+      <input type="text" name="vehicle_no" class="inp" placeholder="UP32 AB 1234" required
+        style="text-transform:uppercase;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;"
+        oninput="this.value=this.value.toUpperCase()"/>
     </div>
 
-    <!-- Select slot -->
     <div class="glass-card" style="padding:20px;margin-bottom:14px;">
       <label class="label-text" style="display:block;margin-bottom:10px;">Select Slot *</label>
+      <div style="display:flex;gap:14px;margin-bottom:12px;font-size:12px;flex-wrap:wrap;">
+        <span style="display:flex;align-items:center;gap:5px;color:#10B981;">
+          <span style="width:10px;height:10px;border-radius:2px;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.5);display:inline-block;"></span>Available
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;color:var(--text-muted);">
+          <span style="width:10px;height:10px;border-radius:2px;background:rgba(128,128,128,0.08);border:1px dashed rgba(128,128,128,0.3);display:inline-block;"></span>Wrong type
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;color:#F43F5E;">
+          <span style="width:10px;height:10px;border-radius:2px;background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);display:inline-block;"></span>Occupied
+        </span>
+      </div>
+
       {% if slots %}
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:8px;margin-bottom:10px;" id="slotPickerGrid">
         {% for slot in slots %}
-        <label style="cursor:pointer;" title="{{ slot.slot_type.upper() }} — {{ slot.label }}">
-          <input type="radio" name="slot_id" value="{{ slot.id }}" style="display:none;" onchange="selectSlot(this,'{{ slot.label }}','{{ slot.slot_type }}')"/>
-          <div class="slot-tile slot-avail" style="height:60px;cursor:pointer;transition:all 0.2s;" id="st-{{ slot.id }}">
+        <label style="cursor:pointer;" title="{{ slot.slot_type.upper() }} — {{ slot.label }}" data-slot-id="{{ slot.id }}">
+          <input type="radio" name="slot_id" value="{{ slot.id }}" data-slot-type="{{ slot.slot_type }}"
+            style="display:none;" onchange="selectSlot(this,'{{ slot.label }}','{{ slot.slot_type }}')"/>
+          <div class="slot-tile slot-avail" style="height:60px;cursor:pointer;transition:all 0.2s;"
+               id="st-{{ slot.id }}" data-slot-type="{{ slot.slot_type }}" data-label="{{ slot.label }}">
             <div style="text-align:center;line-height:1.4;">
               <div style="font-size:9px;opacity:0.7;">{{ slot.slot_type.upper() }}</div>
               <div>{{ slot.label }}</div>
@@ -72,38 +82,219 @@
         </label>
         {% endfor %}
       </div>
-      <div id="selectedSlotInfo" style="font-size:13px;color:var(--text-muted);">Click a slot above to select it.</div>
       {% else %}
-      <div style="text-align:center;padding:20px;color:var(--text-muted);">
+      <div style="text-align:center;padding:20px;color:var(--text-muted);" id="noSlotsMsg">
         <div style="font-size:32px;margin-bottom:8px;">😔</div>
         <p>No available slots right now.</p>
       </div>
       {% endif %}
+
+      <div id="selectedSlotInfo" style="font-size:13px;color:var(--text-muted);">Click a slot above to select it.</div>
+      <div id="mismatchWarn" style="display:none;margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);font-size:13px;color:#F59E0B;">
+        ⚠️ Slot type doesn't match your vehicle. Please pick a matching slot or change vehicle type.
+      </div>
+    </div>
+
+    <!-- Full-screen loading overlay -->
+    <div id="loadingOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(6,8,15,0.8);backdrop-filter:blur(6px);align-items:center;justify-content:center;flex-direction:column;gap:14px;">
+      <div style="width:54px;height:54px;border:4px solid rgba(99,102,241,0.25);border-top-color:#6366F1;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+      <div style="color:#fff;font-weight:600;font-size:14px;">Confirming your booking...</div>
     </div>
 
     <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:14px;font-size:15px;" id="submitBtn">Confirm Booking →</button>
   </form>
 </div>
+
+<style>
+  @keyframes spin { to { transform: rotate(360deg) } }
+  .slot-occupied { background: rgba(244,63,94,0.1) !important; border:1px solid rgba(244,63,94,0.3) !important; color:#F43F5E !important; opacity:0.6; pointer-events:none; }
+</style>
+
 <script>
-var rate2w={{ lot.rate_2w }}, rate4w={{ lot.rate_4w }};
+var selectedSlotType = null;
+var submitPending    = false;
+var LOT_ID           = document.getElementById('bookForm').dataset.lotId;
+
 function updateVehicleUI(){
-  var is2w=document.getElementById('v2w').checked;
-  document.getElementById('label2w').style.borderColor=is2w?'rgba(245,158,11,0.7)':'rgba(245,158,11,0.3)';
-  document.getElementById('label4w').style.borderColor=!is2w?'rgba(34,211,238,0.7)':'rgba(34,211,238,0.3)';
+  var is2w = document.getElementById('v2w').checked;
+  document.getElementById('label2w').style.borderColor = is2w  ? 'rgba(245,158,11,0.7)' : 'rgba(245,158,11,0.3)';
+  document.getElementById('label4w').style.borderColor = !is2w ? 'rgba(34,211,238,0.7)' : 'rgba(34,211,238,0.3)';
+  var chosenType = is2w ? '2w' : '4w';
+
+  // Filter: dim slots that don't match chosen vehicle type
+  document.querySelectorAll('#slotPickerGrid input[type=radio]').forEach(function(inp){
+    var tile    = document.getElementById('st-'+inp.value);
+    var labelEl = inp.closest('label');
+    if(!tile) return;
+    if(!tile.classList.contains('slot-avail')) return; // skip occupied
+    var matches = (inp.dataset.slotType === chosenType);
+    if(matches){
+      tile.style.opacity = '1';
+      if(labelEl) labelEl.style.pointerEvents = '';
+    } else {
+      tile.style.opacity = '0.3';
+      if(labelEl) labelEl.style.pointerEvents = 'none';
+      if(inp.checked){
+        inp.checked = false;
+        tile.style.boxShadow = ''; tile.style.transform = '';
+        document.getElementById('selectedSlotInfo').textContent = 'Click a slot above to select it.';
+        selectedSlotType = null;
+      }
+    }
+  });
+  checkMismatch();
 }
+
 function selectSlot(inp, label, type){
   document.querySelectorAll('#slotPickerGrid .slot-tile').forEach(function(t){
-    t.style.boxShadow='';t.style.transform='';
+    t.style.boxShadow = ''; t.style.transform = '';
   });
-  var el=document.getElementById('st-'+inp.value);
-  el.style.boxShadow='0 0 0 3px rgba(99,102,241,0.6)';
-  el.style.transform='scale(1.05)';
-  document.getElementById('selectedSlotInfo').innerHTML='<span style="color:#10B981;font-weight:600;">✓ Selected:</span> '+label+' ('+type.toUpperCase()+')';
+  var el = document.getElementById('st-'+inp.value);
+  el.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.6)';
+  el.style.transform = 'scale(1.05)';
+  document.getElementById('selectedSlotInfo').innerHTML =
+    '<span style="color:#10B981;font-weight:600;">✓ Selected:</span> '+label+' ('+type.toUpperCase()+')';
+  selectedSlotType = type;
+  checkMismatch();
 }
-document.getElementById('bookForm').addEventListener('submit',function(){
-  var btn=document.getElementById('submitBtn');
-  btn.textContent='Booking...';btn.disabled=true;
+
+function checkMismatch(){
+  var is2w = document.getElementById('v2w').checked;
+  var chosen = is2w ? '2w' : '4w';
+  document.getElementById('mismatchWarn').style.display =
+    (selectedSlotType && selectedSlotType !== chosen) ? 'block' : 'none';
+}
+
+// ─── ASYNC SUBMIT with try/catch + loading overlay + double-click guard ───
+document.getElementById('bookForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  if(submitPending) return;
+
+  var is2w   = document.getElementById('v2w').checked;
+  var chosen = is2w ? '2w' : '4w';
+  var slotChecked = document.querySelector('#slotPickerGrid input[type=radio]:checked');
+
+  if(!slotChecked){ alert('Please select a slot first.'); return; }
+  if(selectedSlotType && selectedSlotType !== chosen){
+    alert('Slot type does not match your vehicle. Please pick a matching slot.'); return;
+  }
+  var vehNo = (this.vehicle_no.value || '').trim();
+  if(vehNo.length < 4){ alert('Please enter a valid vehicle number.'); return; }
+
+  submitPending = true;
+  var btn = document.getElementById('submitBtn');
+  var origText = btn.innerHTML;
+  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.35);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span>Booking...';
+  btn.disabled = true;
+  btn.style.opacity = '0.75';
+  document.getElementById('loadingOverlay').style.display = 'flex';
+
+  // Stop auto-refresh while submitting
+  if(window._slotRefreshTimer){ clearInterval(window._slotRefreshTimer); window._slotRefreshTimer = null; }
+
+  var ctrl = new AbortController();
+  var timeoutId = setTimeout(function(){ ctrl.abort(); }, 20000);
+
+  try {
+    var resp = await fetch(window.location.pathname, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: new FormData(this),
+      signal: ctrl.signal,
+      credentials: 'same-origin'
+    });
+    clearTimeout(timeoutId);
+
+    var data = null;
+    try { data = await resp.json(); } catch(_){ /* server returned redirect HTML */ }
+
+    if(resp.ok && data && data.success && data.redirect_url){
+      window.location.href = data.redirect_url;
+      return;
+    }
+    if(data && data.redirect_url){
+      // e.g. existing active booking
+      window.location.href = data.redirect_url;
+      return;
+    }
+    var errMsg = (data && data.error) ? data.error : 'Booking failed. Please try again.';
+    alert(errMsg);
+
+  } catch(err){
+    clearTimeout(timeoutId);
+    console.error('[Book] error:', err);
+    if(err.name === 'AbortError'){
+      alert('Server is slow. Please check your connection and try again.');
+    } else {
+      alert('Network error. Please try again.');
+    }
+  } finally {
+    submitPending = false;
+    btn.innerHTML = origText;
+    btn.disabled  = false;
+    btn.style.opacity = '1';
+    document.getElementById('loadingOverlay').style.display = 'none';
+    startSlotAutoRefresh(); // resume polling
+  }
 });
+
+// ─── SILENT 3-second auto-refresh of slot availability ───
+function refreshSlots(){
+  fetch('/api/lot/' + LOT_ID + '/slots', { headers: { 'Accept':'application/json' }, cache:'no-cache' })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){
+      if(!data || !data.slots) return;
+      var grid = document.getElementById('slotPickerGrid');
+      var existingTiles = {};
+      if(grid){
+        grid.querySelectorAll('.slot-tile').forEach(function(t){
+          existingTiles[t.id.replace('st-','')] = t;
+        });
+      }
+      // Update statuses silently
+      data.slots.forEach(function(s){
+        var tile = existingTiles[s.id];
+        if(!tile) return;
+        var inp = document.querySelector('#slotPickerGrid input[value="'+s.id+'"]');
+        if(s.status === 'occupied'){
+          if(tile.classList.contains('slot-avail')){
+            tile.classList.remove('slot-avail');
+            tile.classList.add('slot-occupied');
+            if(inp){
+              if(inp.checked){
+                inp.checked = false;
+                document.getElementById('selectedSlotInfo').textContent = 'Slot was just taken — please pick another.';
+                selectedSlotType = null;
+                tile.style.boxShadow = ''; tile.style.transform = '';
+              }
+            }
+          }
+        } else if(s.status === 'available'){
+          if(tile.classList.contains('slot-occupied')){
+            tile.classList.remove('slot-occupied');
+            tile.classList.add('slot-avail');
+            var lbl = tile.closest('label');
+            if(lbl) lbl.style.pointerEvents = '';
+          }
+        }
+      });
+      // Reapply vehicle-type dimming after refresh
+      updateVehicleUI();
+    })
+    .catch(function(){ /* silent */ });
+}
+
+function startSlotAutoRefresh(){
+  if(window._slotRefreshTimer) return;
+  window._slotRefreshTimer = setInterval(refreshSlots, 3000);
+}
+
 updateVehicleUI();
+startSlotAutoRefresh();
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden){
+    if(window._slotRefreshTimer){ clearInterval(window._slotRefreshTimer); window._slotRefreshTimer = null; }
+  } else { startSlotAutoRefresh(); }
+});
 </script>
 {% endblock %}
