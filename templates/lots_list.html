@@ -11,12 +11,29 @@
   #lotsList::-webkit-scrollbar{width:6px;}
   #lotsList::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.3);border-radius:99px;}
 }
-#mapWrap{height:340px;}
-.lot-card{padding:18px;}
+#mapWrap{height:380px;min-height:320px;}
+#map{width:100%;height:100%;border-radius:14px;}
+.map-actions{position:absolute;top:12px;right:12px;z-index:6;display:flex;gap:8px;flex-wrap:wrap;}
+.map-status{position:absolute;top:12px;left:12px;z-index:6;max-width:calc(100% - 140px);}
+.map-action-btn{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.lot-card{padding:18px;scroll-margin-top:86px;transition:box-shadow .2s ease,border-color .2s ease,transform .18s ease;}
 .lot-card.dim{opacity:.55;}
-.distance-pill{font-size:11px;color:var(--text-muted);background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:99px;margin-left:6px;}
+.lot-card.active-focus{border-color:rgba(99,102,241,0.5);box-shadow:0 0 0 1px rgba(99,102,241,0.3),0 16px 36px rgba(0,0,0,0.28);}
+.distance-pill{font-size:11px;color:var(--text-muted);background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:99px;margin-left:6px;display:inline-flex;align-items:center;vertical-align:middle;}
 .geo-banner{padding:10px 14px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:10px;margin-bottom:14px;font-size:13px;color:#F59E0B;display:flex;justify-content:space-between;align-items:center;gap:10px;}
 .geo-banner button{background:#F59E0B;color:#000;border:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;}
+.lot-card-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.lot-card-actions > *{flex:1 1 180px;}
+@keyframes userPulse{0%{transform:scale(0.7);opacity:.8;}70%{transform:scale(1.9);opacity:0;}100%{transform:scale(1.9);opacity:0;}}
+@media(max-width:760px){
+  #findGrid{gap:14px;}
+  #mapWrap{height:420px;}
+  .lot-card{padding:15px;}
+  .geo-banner{align-items:flex-start;flex-direction:column;}
+  .map-status{max-width:calc(100% - 24px);}
+  .map-actions{top:auto;bottom:12px;right:12px;left:12px;justify-content:flex-end;}
+  .map-action-btn{width:auto;min-width:140px;justify-content:center;}
+}
 </style>
 {% endblock %}
 
@@ -30,17 +47,19 @@
 </div>
 
 <div id="geoBanner" class="geo-banner hidden">
-  <span>📍 Allow location to sort lots by nearest to you.</span>
-  <button id="btnAskGeo">Allow</button>
+  <span>📍 Allow location to sort lots by nearest to you and show your live pin on the map.</span>
+  <button id="btnAskGeo" type="button">Allow</button>
 </div>
 
 <div id="findGrid">
-  <!-- ─── MAP (z-index fixed) ─── -->
   <div id="mapWrap" class="glass-card map-wrap" style="padding:0;">
-    <div id="map" style="width:100%;height:100%;border-radius:14px;"></div>
+    <span id="mapStatus" class="badge badge-indigo map-status">🗺️ Loading map…</span>
+    <div class="map-actions">
+      <button id="locateMeBtn" type="button" class="btn-secondary btn-sm map-action-btn">📍 Live Locate</button>
+    </div>
+    <div id="map"></div>
   </div>
 
-  <!-- ─── LOT CARDS ─── -->
   <div id="lotsList" style="display:flex;flex-direction:column;gap:14px;">
     {% if lots %}
       {% for lot in lots %}
@@ -71,11 +90,11 @@
         <div class="occ-bar" style="margin-bottom:12px;">
           <div class="occ-fill" data-occ-fill style="width:{{ ((lot.available_count / lot.total_slots * 100)|round|int) if lot.total_slots > 0 else 0 }}%;background:#10B981;"></div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div class="lot-card-actions">
           {% if current_user.is_authenticated and current_user.role == 'customer' %}
-            <a href="{{ url_for('book_slot', lid=lot.id) }}" class="btn-primary" style="flex:1;justify-content:center;padding:11px;" data-book-btn>Book Now →</a>
+            <a href="{{ url_for('book_slot', lid=lot.id) }}" class="btn-primary" style="justify-content:center;padding:11px;" data-book-btn>Book Now →</a>
           {% elif not current_user.is_authenticated %}
-            <a href="{{ url_for('login') }}" class="btn-primary" style="flex:1;justify-content:center;padding:11px;">Login to Book →</a>
+            <a href="{{ url_for('login') }}" class="btn-primary" style="justify-content:center;padding:11px;">Login to Book →</a>
           {% endif %}
           <a href="https://www.google.com/maps/dir/?api=1&destination={{ lot.latitude }},{{ lot.longitude }}" target="_blank" class="btn-secondary" style="padding:11px 14px;">🧭 Directions</a>
         </div>
@@ -96,123 +115,335 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 var lotsData = {{ lots_json|tojson|safe }};
-var darkTiles  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19, attribution:'© CartoDB'});
-var lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19, attribution:'© CartoDB'});
-var map = L.map('map', {zoomControl:true, attributionControl:false}).setView([22.9734, 78.6569], 5);
-(document.body.classList.contains('light') ? lightTiles : darkTiles).addTo(map);
+var geoBanner = document.getElementById('geoBanner');
+var askGeoBtn = document.getElementById('btnAskGeo');
+var locateMeBtn = document.getElementById('locateMeBtn');
+var mapStatus = document.getElementById('mapStatus');
+var hasAutoCentered = false;
+var currentTileLayer = null;
+var tileErrorCount = 0;
+var usingFallbackTiles = false;
+var watchId = null;
+var lotMarkers = {};
+var userMarker = null;
+var userAccuracyCircle = null;
+
+function setMapStatus(text, tone){
+  if(!mapStatus) return;
+  mapStatus.textContent = text;
+  mapStatus.className = 'badge map-status ' + (tone === 'good' ? 'badge-green' : tone === 'warn' ? 'badge-amber' : 'badge-indigo');
+}
+
+var darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19,
+  subdomains: 'abcd',
+  attribution: '© OpenStreetMap © CARTO'
+});
+var lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19,
+  subdomains: 'abcd',
+  attribution: '© OpenStreetMap © CARTO'
+});
+var fallbackTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap contributors'
+});
+
+var map = L.map('map', {
+  zoomControl: true,
+  attributionControl: false,
+  preferCanvas: true
+}).setView([22.9734, 78.6569], 5);
+
+function safeInvalidateMap(){
+  [80, 250, 700, 1400].forEach(function(delay){
+    setTimeout(function(){
+      try{ map.invalidateSize(true); }catch(e){}
+    }, delay);
+  });
+}
+
+function activateFallbackTiles(){
+  if(usingFallbackTiles) return;
+  usingFallbackTiles = true;
+  if(currentTileLayer && map.hasLayer(currentTileLayer)) map.removeLayer(currentTileLayer);
+  currentTileLayer = fallbackTiles;
+  if(!map.hasLayer(fallbackTiles)) fallbackTiles.addTo(map);
+  setMapStatus('🗺️ Map ready', 'good');
+}
+
+function attachTileObservers(layer){
+  layer.on('load', function(){
+    if(!usingFallbackTiles) setMapStatus('🗺️ Map ready', 'good');
+  });
+  layer.on('tileerror', function(){
+    tileErrorCount += 1;
+    if(tileErrorCount >= 4) activateFallbackTiles();
+  });
+}
+attachTileObservers(darkTiles);
+attachTileObservers(lightTiles);
+attachTileObservers(fallbackTiles);
+
+function applyThemeLayer(){
+  tileErrorCount = 0;
+  var next = document.body.classList.contains('light') ? lightTiles : darkTiles;
+  if(usingFallbackTiles) next = fallbackTiles;
+  if(currentTileLayer && map.hasLayer(currentTileLayer)) map.removeLayer(currentTileLayer);
+  currentTileLayer = next;
+  currentTileLayer.addTo(map);
+  safeInvalidateMap();
+}
+applyThemeLayer();
 window.toggleTheme = function(){
-  if(document.body.classList.contains('light')){
-    map.removeLayer(darkTiles); lightTiles.addTo(map);
-  } else {
-    map.removeLayer(lightTiles); darkTiles.addTo(map);
-  }
+  if(usingFallbackTiles) return;
+  applyThemeLayer();
 };
 
-var markersById = {};
+window.addEventListener('resize', safeInvalidateMap);
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden) safeInvalidateMap();
+});
+window.addEventListener('load', safeInvalidateMap);
 
-function makeIcon(avail){
-  var c = avail > 0 ? '#10B981' : '#F43F5E';
+function makeLotIcon(avail){
+  var color = avail > 0 ? '#10B981' : '#F43F5E';
   return L.divIcon({
-    html:'<div style="width:26px;height:26px;border-radius:50%;background:'+c+';border:3px solid rgba(255,255,255,0.95);box-shadow:0 2px 10px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;">P</div>',
-    iconSize:[26,26], iconAnchor:[13,13], className:''
+    html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:'+color+';transform:rotate(-45deg);border:3px solid rgba(255,255,255,0.96);box-shadow:0 6px 18px rgba(0,0,0,0.38);display:flex;align-items:center;justify-content:center;">' +
+          '<span style="transform:rotate(45deg);color:#fff;font-size:12px;font-weight:800;font-family:DM Sans,sans-serif;">P</span></div>',
+    iconSize:[28,28],
+    iconAnchor:[14,28],
+    popupAnchor:[0,-22],
+    className:''
   });
+}
+
+function makeUserIcon(){
+  return L.divIcon({
+    html: '<div style="position:relative;width:18px;height:18px;">' +
+          '<span style="position:absolute;inset:-8px;border-radius:50%;background:rgba(99,102,241,0.22);animation:userPulse 1.8s infinite;"></span>' +
+          '<span style="position:absolute;inset:0;border-radius:50%;background:#6366F1;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,0.35);"></span>' +
+          '</div>',
+    iconSize:[18,18],
+    iconAnchor:[9,9],
+    className:''
+  });
+}
+
+function validLot(lot){
+  return lot && isFinite(parseFloat(lot.lat)) && isFinite(parseFloat(lot.lng));
+}
+
+function focusCard(lotId){
+  document.querySelectorAll('.lot-card').forEach(function(card){
+    card.classList.toggle('active-focus', String(card.getAttribute('data-lot-id')) === String(lotId));
+  });
+}
+
+function openLotFromCard(lotId){
+  var marker = lotMarkers[String(lotId)];
+  if(marker){
+    marker.openPopup();
+    map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 15), {duration:0.6});
+  }
+  focusCard(lotId);
+}
+
+function getFocusLots(){
+  var valid = lotsData.filter(validLot);
+  if(!window.SE_LOC) return valid;
+  return valid
+    .map(function(lot){
+      return {lot: lot, dist: haversine(window.SE_LOC, {lat: parseFloat(lot.lat), lng: parseFloat(lot.lng)})};
+    })
+    .sort(function(a,b){ return a.dist - b.dist; })
+    .slice(0, 6)
+    .map(function(item){ return item.lot; });
+}
+
+function fitMapToContext(preferUserZoom){
+  var bounds = [];
+  getFocusLots().forEach(function(lot){ bounds.push([parseFloat(lot.lat), parseFloat(lot.lng)]); });
+  if(window.SE_LOC) bounds.push([window.SE_LOC.lat, window.SE_LOC.lng]);
+  if(!bounds.length) return;
+  if(bounds.length === 1){
+    map.setView(bounds[0], preferUserZoom ? 16 : 14);
+    return;
+  }
+  try{
+    map.fitBounds(bounds, {padding:[40,40], maxZoom: preferUserZoom ? 16 : 14});
+  }catch(e){}
 }
 
 function placeMarkers(data){
-  // Remove old
-  Object.keys(markersById).forEach(function(id){ map.removeLayer(markersById[id]); });
-  markersById = {};
-  var bounds = [];
-  data.forEach(function(lot){
-    var m = L.marker([lot.lat, lot.lng], {icon:makeIcon(lot.available)}).addTo(map);
-    m.bindPopup(
-      '<div style="font-family:DM Sans,sans-serif;padding:4px;min-width:170px;">' +
-      '<div style="font-weight:700;font-size:14px;margin-bottom:3px;">'+lot.name+'</div>' +
-      '<div style="font-size:12px;color:#666;margin-bottom:6px;">📍 '+lot.city+'</div>' +
-      '<div style="font-size:13px;font-weight:600;color:'+(lot.available>0?'#10B981':'#F43F5E')+';margin-bottom:6px;">'+lot.available+' / '+lot.total+' free</div>' +
-      '<div style="display:flex;gap:6px;font-size:11px;color:#666;margin-bottom:8px;">🛵 '+lot.avail_2w+' · 🚗 '+lot.avail_4w+'</div>' +
+  Object.keys(lotMarkers).forEach(function(id){
+    try{ map.removeLayer(lotMarkers[id]); }catch(e){}
+  });
+  lotMarkers = {};
+
+  data.filter(validLot).forEach(function(lot){
+    var marker = L.marker([parseFloat(lot.lat), parseFloat(lot.lng)], {icon: makeLotIcon(lot.available)}).addTo(map);
+    marker.bindPopup(
+      '<div style="font-family:DM Sans,sans-serif;padding:4px;min-width:185px;">' +
+      '<div style="font-weight:700;font-size:14px;margin-bottom:3px;">'+ lot.name +'</div>' +
+      '<div style="font-size:12px;color:#666;margin-bottom:6px;">📍 '+ lot.city +'</div>' +
+      '<div style="font-size:13px;font-weight:600;color:'+ (lot.available > 0 ? '#10B981' : '#F43F5E') +';margin-bottom:6px;">'+ lot.available +' / '+ lot.total +' free</div>' +
+      '<div style="display:flex;gap:6px;font-size:11px;color:#666;margin-bottom:8px;">🛵 '+ lot.avail_2w +' · 🚗 '+ lot.avail_4w +'</div>' +
       {% if current_user.is_authenticated and current_user.role == 'customer' %}
-      '<a href="/book/'+lot.id+'" style="display:inline-block;background:#16a34a;color:white;padding:6px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">Book Now →</a>' +
+      '<a href="/book/'+ lot.id +'" style="display:inline-block;background:#16a34a;color:white;padding:6px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">Book Now →</a> ' +
       {% else %}
-      '<a href="{{ url_for('login') }}" style="display:inline-block;background:#16a34a;color:white;padding:6px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">Login to Book</a>' +
+      '<a href="{{ url_for('login') }}" style="display:inline-block;background:#16a34a;color:white;padding:6px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">Login to Book</a> ' +
       {% endif %}
+      '<a href="https://www.google.com/maps/dir/?api=1&destination='+ lot.lat +','+ lot.lng +'" target="_blank" style="display:inline-block;margin-left:6px;background:#111827;color:white;padding:6px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600;">Directions</a>' +
       '</div>'
     );
-    markersById[lot.id] = m;
-    bounds.push([lot.lat, lot.lng]);
+    marker.on('click', function(){
+      focusCard(lot.id);
+      var card = document.querySelector('.lot-card[data-lot-id="'+ lot.id +'"]');
+      if(card) card.scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+    lotMarkers[String(lot.id)] = marker;
   });
-  if(bounds.length){
-    try{ map.fitBounds(bounds, {padding:[40,40], maxZoom:14}); }catch(e){}
+
+  fitMapToContext(false);
+  safeInvalidateMap();
+}
+
+function placeUserMarker(followUser){
+  if(!window.SE_LOC) return;
+  var latlng = [window.SE_LOC.lat, window.SE_LOC.lng];
+  if(!userMarker){
+    userMarker = L.marker(latlng, {icon: makeUserIcon()}).addTo(map).bindPopup('📍 Your live location');
+  } else {
+    userMarker.setLatLng(latlng);
+  }
+  if(window.SE_LOC.accuracy){
+    if(!userAccuracyCircle){
+      userAccuracyCircle = L.circle(latlng, {
+        radius: window.SE_LOC.accuracy,
+        color: '#6366F1',
+        fillColor: '#6366F1',
+        fillOpacity: 0.08,
+        weight: 1
+      }).addTo(map);
+    } else {
+      userAccuracyCircle.setLatLng(latlng);
+      userAccuracyCircle.setRadius(window.SE_LOC.accuracy);
+    }
+  }
+  sortByDistance();
+  if(followUser){
+    map.flyTo(latlng, Math.max(map.getZoom(), 15), {duration:0.7});
+  } else if(!hasAutoCentered) {
+    fitMapToContext(true);
+  }
+  hasAutoCentered = true;
+  setMapStatus('📍 Live location on', 'good');
+}
+
+function applyGeoPosition(position, followUser){
+  window.SE_LOC = {
+    lat: position.coords.latitude,
+    lng: position.coords.longitude,
+    accuracy: position.coords.accuracy || 0,
+    ts: Date.now()
+  };
+  sessionStorage.setItem('se_geo', JSON.stringify(window.SE_LOC));
+  sessionStorage.removeItem('se_geo_declined');
+  if(geoBanner) geoBanner.classList.add('hidden');
+  document.dispatchEvent(new CustomEvent('se:geo', {detail: window.SE_LOC}));
+  placeUserMarker(followUser);
+}
+
+function handleGeoError(err){
+  if(geoBanner) geoBanner.classList.remove('hidden');
+  setMapStatus('📍 Location permission needed', 'warn');
+  console.log('[Geo]', err && err.message);
+}
+
+function startLiveLocation(followUser){
+  if(!navigator.geolocation){
+    alert('Geolocation is not supported on this device.');
+    return;
+  }
+  setMapStatus('📡 Finding your location…', 'warn');
+  navigator.geolocation.getCurrentPosition(function(position){
+    applyGeoPosition(position, followUser !== false);
+  }, handleGeoError, {enableHighAccuracy:true, maximumAge:10000, timeout:15000});
+
+  if(watchId === null){
+    watchId = navigator.geolocation.watchPosition(function(position){
+      applyGeoPosition(position, false);
+    }, function(){}, {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
   }
 }
 
-placeMarkers(lotsData);
+if(askGeoBtn){
+  askGeoBtn.onclick = function(){ startLiveLocation(true); };
+}
+if(locateMeBtn){
+  locateMeBtn.onclick = function(){ startLiveLocation(true); };
+}
 
-// User location pin
-var userMarker = null;
-function placeUserMarker(){
-  if(!window.SE_LOC) return;
-  if(userMarker) map.removeLayer(userMarker);
-  userMarker = L.circleMarker([SE_LOC.lat, SE_LOC.lng], {
-    radius:9, fillColor:'#6366F1', color:'#fff', weight:3, fillOpacity:0.95
-  }).addTo(map).bindPopup('📍 You are here');
-  // Sort lot cards by distance
-  sortByDistance();
-}
-document.addEventListener('se:geo', placeUserMarker);
-if(window.SE_LOC) placeUserMarker();
-else {
-  // Show banner if no location yet
-  var banner = document.getElementById('geoBanner');
-  if(banner) banner.classList.remove('hidden');
-  document.getElementById('btnAskGeo').onclick = function(){
-    if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(function(p){
-        window.SE_LOC = {lat:p.coords.latitude, lng:p.coords.longitude, ts:Date.now()};
-        sessionStorage.setItem('se_geo', JSON.stringify(window.SE_LOC));
-        sessionStorage.removeItem('se_geo_declined');
-        banner.classList.add('hidden');
-        placeUserMarker();
-      }, function(){ alert('Could not get your location.'); });
-    }
-  };
-}
+document.addEventListener('se:geo', function(){
+  placeUserMarker(false);
+  fitMapToContext(true);
+});
 
 function haversine(a, b){
-  var R=6371, toR=function(d){return d*Math.PI/180;};
-  var dLat=toR(b.lat-a.lat), dLng=toR(b.lng-a.lng);
-  var s=Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
-  return 2*R*Math.asin(Math.sqrt(s));
+  var R = 6371;
+  var toR = function(d){ return d * Math.PI / 180; };
+  var dLat = toR(b.lat - a.lat), dLng = toR(b.lng - a.lng);
+  var s = Math.sin(dLat/2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng/2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
 }
 
 function sortByDistance(){
-  if(!window.SE_LOC) return;
   var list = document.getElementById('lotsList');
   if(!list) return;
   var cards = Array.prototype.slice.call(list.querySelectorAll('.lot-card'));
-  cards.forEach(function(c){
-    var lat = parseFloat(c.getAttribute('data-lat')), lng = parseFloat(c.getAttribute('data-lng'));
-    var d = haversine(SE_LOC, {lat:lat,lng:lng});
-    c.dataset.distance = d.toFixed(2);
-    var pill = c.querySelector('[data-distance]');
-    if(pill) pill.textContent = d < 1 ? Math.round(d*1000)+' m' : d.toFixed(1)+' km';
+  cards.forEach(function(card){
+    var lat = parseFloat(card.getAttribute('data-lat'));
+    var lng = parseFloat(card.getAttribute('data-lng'));
+    var pill = card.querySelector('[data-distance]');
+    if(!window.SE_LOC || !isFinite(lat) || !isFinite(lng)){
+      if(pill) pill.textContent = '';
+      delete card.dataset.distance;
+      return;
+    }
+    var dist = haversine(window.SE_LOC, {lat: lat, lng: lng});
+    card.dataset.distance = String(dist);
+    if(pill) pill.textContent = dist < 1 ? Math.round(dist * 1000) + ' m' : dist.toFixed(1) + ' km';
   });
-  cards.sort(function(a,b){ return parseFloat(a.dataset.distance) - parseFloat(b.dataset.distance); });
-  cards.forEach(function(c){ list.appendChild(c); });
+  if(!window.SE_LOC) return;
+  cards.sort(function(a, b){ return parseFloat(a.dataset.distance || '999999') - parseFloat(b.dataset.distance || '999999'); });
+  cards.forEach(function(card){ list.appendChild(card); });
 }
 
-/* AJAX background refresh — every 4s via base.html hook */
+Array.prototype.slice.call(document.querySelectorAll('.lot-card')).forEach(function(card){
+  card.addEventListener('click', function(e){
+    if(e.target.closest('a,button,form,input,select,label')) return;
+    openLotFromCard(card.getAttribute('data-lot-id'));
+  });
+});
+
+placeMarkers(lotsData);
+if(window.SE_LOC){
+  placeUserMarker(false);
+  fitMapToContext(true);
+} else if(geoBanner) {
+  geoBanner.classList.remove('hidden');
+  setMapStatus('📍 Enable location for nearest lots', 'warn');
+}
+
 window.SE_AUTOREFRESH = function(){
-  fetch('/api/lots', {cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+  fetch('/api/lots', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(d){
     if(!d.ok || !d.lots) return;
     lotsData = d.lots;
-    document.getElementById('lotCountText').textContent =
-      d.lots.length + ' active lot' + (d.lots.length===1?'':'s') + ' available now';
-    // Update markers
+    document.getElementById('lotCountText').textContent = d.lots.length + ' active lot' + (d.lots.length === 1 ? '' : 's') + ' available now';
     placeMarkers(d.lots);
-    // Update each card
     d.lots.forEach(function(lot){
-      var card = document.querySelector('.lot-card[data-lot-id="'+lot.id+'"]');
+      var card = document.querySelector('.lot-card[data-lot-id="'+ lot.id +'"]');
       if(!card) return;
       var badge = card.querySelector('[data-avail-badge]');
       if(badge){
@@ -229,7 +460,7 @@ window.SE_AUTOREFRESH = function(){
       var a4 = card.querySelector('[data-avail-4w]');
       if(a4) a4.innerHTML = '🚗 ' + lot.avail_4w + ' free';
       var fill = card.querySelector('[data-occ-fill]');
-      if(fill && lot.total>0){
+      if(fill && lot.total > 0){
         var pct = Math.round(lot.available / lot.total * 100);
         fill.style.width = pct + '%';
         fill.style.background = pct > 50 ? '#10B981' : (pct > 20 ? '#F59E0B' : '#F43F5E');

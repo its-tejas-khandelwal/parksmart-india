@@ -33,20 +33,36 @@ body{padding-top:64px;}
 /* NAV */
 .nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(6,8,15,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border-subtle);}
 body.light .nav{background:rgba(255,255,255,0.85);}
-.nav-inner{max-width:1200px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text-primary);}
-.brand-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#16a34a,#10B981);display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-family:'Syne',sans-serif;}
+.nav-inner{max-width:1200px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text-primary);min-width:0;}
+.brand-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#16a34a,#10B981);display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-family:'Syne',sans-serif;flex-shrink:0;}
 .brand-name{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;}
+.nav-toggle{display:none;}
 .nav-links{display:flex;align-items:center;gap:16px;}
 .nav-links a{color:var(--text-secondary);text-decoration:none;font-size:14px;font-weight:500;}
 .nav-links a:hover{color:var(--text-primary);}
-.nav-icon-btn{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid var(--border-subtle);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;}
+.nav-links .btn-primary,.nav-links .btn-secondary{white-space:nowrap;}
+.install-app-btn{white-space:nowrap;}
+.nav-icon-btn{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid var(--border-subtle);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;flex-shrink:0;}
 .nav-icon-btn:hover{background:var(--bg-tertiary);}
 .notif-badge{position:absolute;top:-4px;right:-4px;background:#F43F5E;color:white;font-size:10px;font-weight:700;border-radius:99px;min-width:16px;height:16px;padding:0 4px;display:flex;align-items:center;justify-content:center;}
 
 /* CONTAINER */
 .container{max-width:1200px;margin:0 auto;padding:24px 20px 80px;position:relative;z-index:1;}
-@media(max-width:600px){.container{padding:18px 14px 60px;}.nav-links{gap:8px;}.nav-links .label-hide{display:none;}}
+@media(max-width:760px){
+  body{padding-top:70px;}
+  .container{padding:18px 14px 60px;}
+  .nav-inner{padding:12px 14px;align-items:center;}
+  .nav-toggle{display:flex;margin-left:auto;}
+  .nav-links{display:none;width:100%;flex-direction:column;align-items:stretch;gap:10px;padding-top:12px;border-top:1px solid var(--border-subtle);}
+  .nav-links.open{display:flex;}
+  .nav-links .label-hide{display:flex;}
+  .nav-links a,.nav-links button{width:100%;justify-content:center;}
+  .nav-links > a:not(.btn-primary):not(.btn-secondary):not(.nav-icon-btn){padding:10px 12px;border:1px solid var(--border-subtle);border-radius:12px;background:rgba(255,255,255,0.03);text-align:center;}
+  .nav-links .nav-icon-btn{width:100%;height:44px;border-radius:12px;}
+  .notif-drop{top:70px;right:12px;left:12px;width:auto;max-height:min(65vh,480px);}
+  .flash-stack{left:12px;right:12px;max-width:none;}
+}
 
 /* CARDS */
 .glass-card{background:rgba(255,255,255,0.03);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--border-subtle);border-radius:14px;}
@@ -144,8 +160,10 @@ body.light .inp{background:#fff;}
       <span class="brand-logo">P</span>
       <span class="brand-name gradient-text">SpotEasy</span>
     </a>
-    <div class="nav-links">
+    <button class="nav-icon-btn nav-toggle" id="navToggle" title="Menu" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <div class="nav-links" id="navLinks">
       <a href="{{ url_for('lots_list') }}" class="label-hide">Find Parking</a>
+      <button type="button" class="btn-secondary btn-sm install-app-btn" data-install-app>⬇️ Download App</button>
       {% if current_user.is_authenticated %}
         {% if current_user.role == 'customer' %}<a href="{{ url_for('customer_dashboard') }}" class="label-hide">Dashboard</a>{% endif %}
         {% if current_user.role == 'vendor' %}<a href="{{ url_for('vendor_dashboard') }}" class="label-hide">Dashboard</a>{% endif %}
@@ -222,6 +240,83 @@ body.light .inp{background:#fff;}
       window.toggleTheme && window.toggleTheme();
     };
   }
+})();
+
+/* ───────── MOBILE NAV ───────── */
+(function(){
+  var toggle = document.getElementById('navToggle');
+  var links = document.getElementById('navLinks');
+  if(!toggle || !links) return;
+  function closeMenu(){
+    links.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.textContent = '☰';
+  }
+  toggle.onclick = function(e){
+    e.stopPropagation();
+    var open = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.textContent = open ? '✕' : '☰';
+  };
+  links.querySelectorAll('a,button').forEach(function(el){
+    if(el === toggle) return;
+    el.addEventListener('click', function(){
+      if(window.innerWidth <= 760) closeMenu();
+    });
+  });
+  document.addEventListener('click', function(e){
+    if(window.innerWidth > 760) return;
+    if(!links.contains(e.target) && e.target !== toggle) closeMenu();
+  });
+  window.addEventListener('resize', function(){
+    if(window.innerWidth > 760){
+      links.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.textContent = '☰';
+    }
+  });
+})();
+
+/* ───────── PWA INSTALL CTA ───────── */
+window.SE_INSTALL_PROMPT = null;
+(function(){
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('[data-install-app]'));
+  if(!buttons.length) return;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  function setLabel(text){ buttons.forEach(function(btn){ btn.textContent = text; }); }
+  function hideButtons(){ buttons.forEach(function(btn){ btn.classList.add('hidden'); btn.disabled = true; }); }
+  function showButtons(){ buttons.forEach(function(btn){ btn.classList.remove('hidden'); btn.disabled = false; }); }
+  if(isStandalone){ hideButtons(); return; }
+  showButtons();
+  if(isIOS) setLabel('⬇️ Add App to Home Screen');
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    window.SE_INSTALL_PROMPT = e;
+    setLabel('⬇️ Download App');
+    showButtons();
+  });
+  window.addEventListener('appinstalled', function(){
+    window.SE_INSTALL_PROMPT = null;
+    hideButtons();
+  });
+  buttons.forEach(function(btn){
+    btn.addEventListener('click', async function(){
+      try{
+        if(window.SE_INSTALL_PROMPT){
+          window.SE_INSTALL_PROMPT.prompt();
+          await window.SE_INSTALL_PROMPT.userChoice.catch(function(){});
+          window.SE_INSTALL_PROMPT = null;
+          return;
+        }
+        if(isIOS){
+          alert('On iPhone/iPad: tap Share and then “Add to Home Screen” to install SpotEasy.');
+          return;
+        }
+        alert('Open this site in Chrome, Edge, or another supported browser to install the SpotEasy app.');
+      }catch(e){}
+    });
+  });
 })();
 
 /* ───────── ANIMATE-IN ───────── */
