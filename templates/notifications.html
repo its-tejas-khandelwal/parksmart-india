@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Notifications — SpotEasy{% endblock %}
+{% block content %}
+<div style="max-width:600px;margin:0 auto;">
+  <div style="margin-bottom:18px;" class="anim-item visible">
+    <h1 class="syne" style="font-size:24px;font-weight:700;">🔔 Notifications</h1>
+    <p style="color:var(--text-secondary);font-size:13px;margin-top:3px;">{{ items|length }} recent</p>
+  </div>
+  {% if items %}
+  <div class="glass-card" style="overflow:hidden;">
+    {% for n in items %}
+    <a href="{{ n.url or '#' }}" style="display:flex;gap:12px;padding:14px 18px;text-decoration:none;color:inherit;border-bottom:1px solid var(--border-subtle);background:{% if not n.is_read %}rgba(99,102,241,0.05){% else %}transparent{% endif %};">
+      <div style="font-size:22px;">{{ n.icon }}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:14px;">{{ n.title }}</div>
+        {% if n.body %}<div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">{{ n.body }}</div>{% endif %}
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">{{ to_ist(n.created_at).strftime('%d %b %Y, %I:%M %p') }} IST</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="glass-card" style="padding:48px;text-align:center;">
+    <div style="font-size:46px;margin-bottom:8px;">🔔</div>
+    <p style="color:var(--text-secondary);">No notifications yet.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

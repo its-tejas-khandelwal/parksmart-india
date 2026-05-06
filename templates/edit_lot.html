@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Edit Lot — {{ lot.name }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+{% endblock %}
+{% block content %}
+<div style="max-width:680px;margin:0 auto;">
+  <div style="margin-bottom:22px;" class="anim-item visible">
+    <a href="{% if current_user.role=='admin' %}{{ url_for('admin_dashboard') }}{% else %}{{ url_for('vendor_dashboard') }}{% endif %}" style="color:var(--text-secondary);text-decoration:none;font-size:13px;">← Back</a>
+    <h1 class="syne" style="font-size:24px;font-weight:700;margin-top:8px;">Edit Lot — {{ lot.name }}</h1>
+    {% if current_user.role == 'vendor' %}
+    <p style="color:var(--text-secondary);font-size:13px;margin-top:4px;">Your edit will need admin approval. <strong>The lot stays live with current values</strong> until approved.</p>
+    {% else %}
+    <p style="color:var(--text-secondary);font-size:13px;margin-top:4px;">As admin, your edits apply instantly.</p>
+    {% endif %}
+  </div>
+
+  {% if pending and current_user.role == 'vendor' %}
+  <div class="glass-card anim-item visible" style="padding:14px 16px;margin-bottom:16px;border-left:3px solid #6366F1;background:rgba(99,102,241,0.06);">
+    <div style="font-size:13px;font-weight:600;color:#6366F1;margin-bottom:6px;">📝 You have a pending edit awaiting approval</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Submitting again will overwrite the previous pending edit.</div>
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="glass-card anim-item visible" style="padding:26px;">
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">Basic Info</div>
+    <div style="margin-bottom:13px;"><label class="label-text">Lot Name *</label><input type="text" name="name" class="inp" value="{{ (pending.name if pending else lot.name) }}" required/></div>
+    <div style="margin-bottom:13px;"><label class="label-text">Address *</label><input type="text" name="address" class="inp" value="{{ (pending.address if pending else lot.address) }}" required/></div>
+    <div style="margin-bottom:13px;"><label class="label-text">City *</label><input type="text" name="city" class="inp" value="{{ (pending.city if pending else lot.city) }}" required/></div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 12px;">Location (click on map)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div><label class="label-text">Latitude *</label><input type="text" id="latInp" name="latitude" class="inp" value="{{ (pending.latitude if pending else lot.latitude) }}" required/></div>
+      <div><label class="label-text">Longitude *</label><input type="text" id="lngInp" name="longitude" class="inp" value="{{ (pending.longitude if pending else lot.longitude) }}" required/></div>
+    </div>
+    <div style="height:280px;border-radius:12px;overflow:hidden;margin-bottom:18px;" class="map-wrap">
+      <div id="pickMap" style="width:100%;height:100%;"></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">Slots & Rates</div>
+    <div class="glass-card" style="padding:10px 14px;background:rgba(245,158,11,0.06);border-color:rgba(245,158,11,0.25);margin-bottom:13px;font-size:12px;color:#F59E0B;">
+      ⚠️ Total slot count cannot be edited (would invalidate active bookings). Delete &amp; recreate the lot if you need a different slot count.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;">
+      <div><label class="label-text">2-Wheeler slots</label><input type="number" class="inp" value="{{ lot.slots|selectattr('slot_type','eq','2w')|list|length }}" disabled/></div>
+      <div><label class="label-text">4-Wheeler slots</label><input type="number" class="inp" value="{{ lot.slots|selectattr('slot_type','eq','4w')|list|length }}" disabled/></div>
+    </div>
+    <input type="hidden" name="slots_2w" value="{{ lot.slots|selectattr('slot_type','eq','2w')|list|length }}"/>
+    <input type="hidden" name="slots_4w" value="{{ lot.slots|selectattr('slot_type','eq','4w')|list|length }}"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+      <div><label class="label-text">2W rate (₹/hr) *</label><input type="number" name="rate_2w" class="inp" min="1" step="0.5" value="{{ (pending.rate_2w if pending else lot.rate_2w) }}" required/></div>
+      <div><label class="label-text">4W rate (₹/hr) *</label><input type="number" name="rate_4w" class="inp" min="1" step="0.5" value="{{ (pending.rate_4w if pending else lot.rate_4w) }}" required/></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">UPI Payment Details</div>
+    <div style="margin-bottom:13px;">
+      <label class="label-text">UPI ID</label>
+      <input type="text" name="upi_id" class="inp" value="{{ (pending.upi_id if pending else (lot.upi_id or '')) }}" placeholder="yourname@upi"/>
+    </div>
+    {% if lot.upi_qr_path %}
+    <div style="margin-bottom:10px;font-size:12px;color:var(--text-secondary);">
+      Current QR: <img src="{{ url_for('static', filename=lot.upi_qr_path) }}" style="height:80px;border-radius:8px;margin-top:6px;display:block;"/>
+    </div>
+    {% endif %}
+    <div style="margin-bottom:22px;">
+      <label class="label-text">Replace UPI QR image (optional)</label>
+      <input type="file" name="upi_qr" accept="image/*" class="inp" style="padding:8px;"/>
+    </div>
+
+    <button type="submit" class="btn-primary" style="width:100%;padding:13px;">
+      {% if current_user.role=='admin' %}💾 Save Changes (Apply Now){% else %}📤 Submit Edit for Approval{% endif %}
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var darkTiles  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19});
+var lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19});
+var lat = parseFloat(document.getElementById('latInp').value) || 22.9734;
+var lng = parseFloat(document.getElementById('lngInp').value) || 78.6569;
+var pickMap = L.map('pickMap',{zoomControl:true,attributionControl:false}).setView([lat, lng], 14);
+(document.body.classList.contains('light') ? lightTiles : darkTiles).addTo(pickMap);
+var marker = L.marker([lat,lng]).addTo(pickMap);
+pickMap.on('click', function(e){
+  pickMap.removeLayer(marker);
+  marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(pickMap);
+  document.getElementById('latInp').value = e.latlng.lat.toFixed(6);
+  document.getElementById('lngInp').value = e.latlng.lng.toFixed(6);
+});
+window.SE_AUTOREFRESH = function(){};
+</script>
+{% endblock %}

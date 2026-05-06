@@ -1,300 +1,121 @@
 {% extends "base.html" %}
 {% block title %}Book Slot — {{ lot.name }}{% endblock %}
 {% block content %}
-<div style="max-width:560px;margin:0 auto;">
-  <div style="margin-bottom:20px;" class="anim-item visible">
+<div style="max-width:620px;margin:0 auto;">
+  <div style="margin-bottom:18px;" class="anim-item visible">
     <a href="{{ url_for('lots_list') }}" style="color:var(--text-secondary);text-decoration:none;font-size:13px;">← Back to Lots</a>
-    <h1 class="syne" style="font-size:22px;font-weight:700;margin-top:10px;">Book a Slot</h1>
-    <p style="color:var(--text-secondary);font-size:14px;margin-top:3px;">📍 {{ lot.name }}, {{ lot.city }}</p>
+    <h1 class="syne" style="font-size:22px;font-weight:700;margin-top:8px;">Book a Slot</h1>
+    <p style="color:var(--text-secondary);font-size:13px;margin-top:3px;">📍 {{ lot.name }}, {{ lot.city }}</p>
   </div>
 
-  <div class="glass-card anim-item visible" style="padding:16px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <span style="font-size:18px;">🛵</span>
-      <div>
-        <div style="font-size:12px;color:var(--text-secondary);">2-Wheeler</div>
-        <div style="font-weight:700;color:#F59E0B;">₹{{ lot.rate_2w }}/hr</div>
-      </div>
+  <!-- Live availability strip -->
+  <div class="glass-card anim-item visible" style="padding:14px 18px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;">
+    <div style="display:flex;gap:18px;flex-wrap:wrap;">
+      <div><span style="font-size:18px;">🛵</span> <span style="font-weight:700;color:#F59E0B;" id="avail2w">{{ lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length }}</span><span style="font-size:11px;color:var(--text-muted);"> · ₹{{ lot.rate_2w }}/hr</span></div>
+      <div><span style="font-size:18px;">🚗</span> <span style="font-weight:700;color:#22D3EE;" id="avail4w">{{ lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length }}</span><span style="font-size:11px;color:var(--text-muted);"> · ₹{{ lot.rate_4w }}/hr</span></div>
     </div>
-    <div style="width:1px;height:30px;background:var(--border-subtle);"></div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <span style="font-size:18px;">🚗</span>
-      <div>
-        <div style="font-size:12px;color:var(--text-secondary);">4-Wheeler</div>
-        <div style="font-weight:700;color:#22D3EE;">₹{{ lot.rate_4w }}/hr</div>
-      </div>
-    </div>
-    <div style="width:1px;height:30px;background:var(--border-subtle);"></div>
-    <div style="font-size:12px;color:#10B981;font-weight:600;display:flex;align-items:center;gap:4px;">⏱️ 15 min FREE grace</div>
+    <span class="badge badge-green"><span class="pulse-dot pulse-green"></span>Live</span>
   </div>
 
-  <form method="post" class="anim-item visible" id="bookForm" data-lot-id="{{ lot.id }}">
-    <div class="glass-card" style="padding:20px;margin-bottom:14px;">
-      <label class="label-text" style="margin-bottom:10px;display:block;">Vehicle Type</label>
-      <div style="display:flex;gap:10px;">
-        <label style="flex:1;display:flex;align-items:center;gap:10px;background:rgba(245,158,11,0.08);border:2px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.2s;" id="label2w">
-          <input type="radio" name="vehicle_type" value="2w" id="v2w" style="display:none;" onchange="updateVehicleUI()"/>
-          <span style="font-size:22px;">🛵</span>
-          <div><div style="font-weight:600;font-size:14px;">2-Wheeler</div><div style="font-size:11px;color:var(--text-secondary);">₹{{ lot.rate_2w }}/hr</div></div>
+  <form method="post" id="bookForm" class="glass-card anim-item visible" style="padding:24px;">
+    <div style="margin-bottom:16px;">
+      <label class="label-text">Vehicle Type *</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <label style="border:1px solid var(--border-subtle);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px;" id="lbl2w">
+          <input type="radio" name="vehicle_type" value="2w" required onchange="setVT('2w')"/> 🛵 2-Wheeler
         </label>
-        <label style="flex:1;display:flex;align-items:center;gap:10px;background:rgba(34,211,238,0.08);border:2px solid rgba(34,211,238,0.5);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.2s;" id="label4w">
-          <input type="radio" name="vehicle_type" value="4w" id="v4w" checked style="display:none;" onchange="updateVehicleUI()"/>
-          <span style="font-size:22px;">🚗</span>
-          <div><div style="font-weight:600;font-size:14px;">4-Wheeler</div><div style="font-size:11px;color:var(--text-secondary);">₹{{ lot.rate_4w }}/hr</div></div>
+        <label style="border:1px solid var(--border-subtle);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px;" id="lbl4w">
+          <input type="radio" name="vehicle_type" value="4w" required onchange="setVT('4w')"/> 🚗 4-Wheeler
         </label>
       </div>
     </div>
 
-    <div class="glass-card" style="padding:20px;margin-bottom:14px;">
+    <div style="margin-bottom:16px;">
       <label class="label-text">Vehicle Number *</label>
-      <input type="text" name="vehicle_no" class="inp" placeholder="UP32 AB 1234" required
-        style="text-transform:uppercase;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;"
-        oninput="this.value=this.value.toUpperCase()"/>
+      <input type="text" name="vehicle_no" class="inp" placeholder="UP78AB1234" required minlength="4" maxlength="20" style="text-transform:uppercase;"/>
     </div>
 
-    <div class="glass-card" style="padding:20px;margin-bottom:14px;">
-      <label class="label-text" style="display:block;margin-bottom:10px;">Select Slot *</label>
-      <div style="display:flex;gap:14px;margin-bottom:12px;font-size:12px;flex-wrap:wrap;">
-        <span style="display:flex;align-items:center;gap:5px;color:#10B981;">
-          <span style="width:10px;height:10px;border-radius:2px;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.5);display:inline-block;"></span>Available
-        </span>
-        <span style="display:flex;align-items:center;gap:5px;color:var(--text-muted);">
-          <span style="width:10px;height:10px;border-radius:2px;background:rgba(128,128,128,0.08);border:1px dashed rgba(128,128,128,0.3);display:inline-block;"></span>Wrong type
-        </span>
-        <span style="display:flex;align-items:center;gap:5px;color:#F43F5E;">
-          <span style="width:10px;height:10px;border-radius:2px;background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);display:inline-block;"></span>Occupied
-        </span>
-      </div>
-
-      {% if slots %}
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:8px;margin-bottom:10px;" id="slotPickerGrid">
-        {% for slot in slots %}
-        <label style="cursor:pointer;" title="{{ slot.slot_type.upper() }} — {{ slot.label }}" data-slot-id="{{ slot.id }}">
-          <input type="radio" name="slot_id" value="{{ slot.id }}" data-slot-type="{{ slot.slot_type }}"
-            style="display:none;" onchange="selectSlot(this,'{{ slot.label }}','{{ slot.slot_type }}')"/>
-          <div class="slot-tile slot-avail" style="height:60px;cursor:pointer;transition:all 0.2s;"
-               id="st-{{ slot.id }}" data-slot-type="{{ slot.slot_type }}" data-label="{{ slot.label }}">
-            <div style="text-align:center;line-height:1.4;">
-              <div style="font-size:9px;opacity:0.7;">{{ slot.slot_type.upper() }}</div>
-              <div>{{ slot.label }}</div>
-            </div>
-          </div>
-        </label>
+    <div style="margin-bottom:16px;">
+      <label class="label-text">Choose a slot *</label>
+      <div id="slotGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:240px;overflow:auto;padding:10px;background:rgba(0,0,0,0.15);border-radius:10px;">
+        {% for s in slots %}
+        <button type="button" class="slot-btn" data-slot-id="{{ s.id }}" data-slot-type="{{ s.slot_type }}"
+          style="padding:10px 4px;border-radius:8px;border:1px solid var(--border-subtle);background:rgba(16,185,129,0.08);color:#10B981;cursor:pointer;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;">
+          {{ s.label }}
+        </button>
         {% endfor %}
       </div>
-      {% else %}
-      <div style="text-align:center;padding:20px;color:var(--text-muted);" id="noSlotsMsg">
-        <div style="font-size:32px;margin-bottom:8px;">😔</div>
-        <p>No available slots right now.</p>
-      </div>
-      {% endif %}
-
-      <div id="selectedSlotInfo" style="font-size:13px;color:var(--text-muted);">Click a slot above to select it.</div>
-      <div id="mismatchWarn" style="display:none;margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);font-size:13px;color:#F59E0B;">
-        ⚠️ Slot type doesn't match your vehicle. Please pick a matching slot or change vehicle type.
-      </div>
+      <input type="hidden" name="slot_id" id="slotIdField" required/>
+      <div id="slotMsg" style="font-size:12px;color:var(--text-muted);margin-top:6px;">Select your vehicle type first to filter slots.</div>
     </div>
 
-    <!-- Full-screen loading overlay -->
-    <div id="loadingOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(6,8,15,0.8);backdrop-filter:blur(6px);align-items:center;justify-content:center;flex-direction:column;gap:14px;">
-      <div style="width:54px;height:54px;border:4px solid rgba(99,102,241,0.25);border-top-color:#6366F1;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-      <div style="color:#fff;font-weight:600;font-size:14px;">Confirming your booking...</div>
-    </div>
-
-    <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:14px;font-size:15px;" id="submitBtn">Confirm Booking →</button>
+    <button type="submit" class="btn-primary" style="width:100%;padding:13px;" id="submitBtn">Book Slot →</button>
+    <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:10px;">FREE if you exit within 15 minutes. Pay at exit (cash or UPI).</p>
   </form>
 </div>
 
-<style>
-  @keyframes spin { to { transform: rotate(360deg) } }
-  .slot-occupied { background: rgba(244,63,94,0.1) !important; border:1px solid rgba(244,63,94,0.3) !important; color:#F43F5E !important; opacity:0.6; pointer-events:none; }
-</style>
-
 <script>
-var selectedSlotType = null;
-var submitPending    = false;
-var LOT_ID           = document.getElementById('bookForm').dataset.lotId;
+var selectedVT = null;
+var selectedSlotId = null;
 
-function updateVehicleUI(){
-  var is2w = document.getElementById('v2w').checked;
-  document.getElementById('label2w').style.borderColor = is2w  ? 'rgba(245,158,11,0.7)' : 'rgba(245,158,11,0.3)';
-  document.getElementById('label4w').style.borderColor = !is2w ? 'rgba(34,211,238,0.7)' : 'rgba(34,211,238,0.3)';
-  var chosenType = is2w ? '2w' : '4w';
-
-  // Filter: dim slots that don't match chosen vehicle type
-  document.querySelectorAll('#slotPickerGrid input[type=radio]').forEach(function(inp){
-    var tile    = document.getElementById('st-'+inp.value);
-    var labelEl = inp.closest('label');
-    if(!tile) return;
-    if(!tile.classList.contains('slot-avail')) return; // skip occupied
-    var matches = (inp.dataset.slotType === chosenType);
-    if(matches){
-      tile.style.opacity = '1';
-      if(labelEl) labelEl.style.pointerEvents = '';
+function setVT(vt){
+  selectedVT = vt;
+  document.getElementById('lbl2w').style.borderColor = vt==='2w' ? '#F59E0B' : 'var(--border-subtle)';
+  document.getElementById('lbl4w').style.borderColor = vt==='4w' ? '#22D3EE' : 'var(--border-subtle)';
+  document.querySelectorAll('.slot-btn').forEach(function(b){
+    if(b.getAttribute('data-slot-type') === vt){
+      b.style.display = '';
     } else {
-      tile.style.opacity = '0.3';
-      if(labelEl) labelEl.style.pointerEvents = 'none';
-      if(inp.checked){
-        inp.checked = false;
-        tile.style.boxShadow = ''; tile.style.transform = '';
-        document.getElementById('selectedSlotInfo').textContent = 'Click a slot above to select it.';
-        selectedSlotType = null;
-      }
+      b.style.display = 'none';
     }
   });
-  checkMismatch();
+  document.getElementById('slotMsg').textContent = 'Click an available slot.';
+  selectedSlotId = null;
+  document.getElementById('slotIdField').value = '';
 }
 
-function selectSlot(inp, label, type){
-  document.querySelectorAll('#slotPickerGrid .slot-tile').forEach(function(t){
-    t.style.boxShadow = ''; t.style.transform = '';
-  });
-  var el = document.getElementById('st-'+inp.value);
-  el.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.6)';
-  el.style.transform = 'scale(1.05)';
-  document.getElementById('selectedSlotInfo').innerHTML =
-    '<span style="color:#10B981;font-weight:600;">✓ Selected:</span> '+label+' ('+type.toUpperCase()+')';
-  selectedSlotType = type;
-  checkMismatch();
-}
-
-function checkMismatch(){
-  var is2w = document.getElementById('v2w').checked;
-  var chosen = is2w ? '2w' : '4w';
-  document.getElementById('mismatchWarn').style.display =
-    (selectedSlotType && selectedSlotType !== chosen) ? 'block' : 'none';
-}
-
-// ─── ASYNC SUBMIT with try/catch + loading overlay + double-click guard ───
-document.getElementById('bookForm').addEventListener('submit', async function(e){
-  e.preventDefault();
-  if(submitPending) return;
-
-  var is2w   = document.getElementById('v2w').checked;
-  var chosen = is2w ? '2w' : '4w';
-  var slotChecked = document.querySelector('#slotPickerGrid input[type=radio]:checked');
-
-  if(!slotChecked){ alert('Please select a slot first.'); return; }
-  if(selectedSlotType && selectedSlotType !== chosen){
-    alert('Slot type does not match your vehicle. Please pick a matching slot.'); return;
-  }
-  var vehNo = (this.vehicle_no.value || '').trim();
-  if(vehNo.length < 4){ alert('Please enter a valid vehicle number.'); return; }
-
-  submitPending = true;
-  var btn = document.getElementById('submitBtn');
-  var origText = btn.innerHTML;
-  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.35);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span>Booking...';
-  btn.disabled = true;
-  btn.style.opacity = '0.75';
-  document.getElementById('loadingOverlay').style.display = 'flex';
-
-  // Stop auto-refresh while submitting
-  if(window._slotRefreshTimer){ clearInterval(window._slotRefreshTimer); window._slotRefreshTimer = null; }
-
-  var ctrl = new AbortController();
-  var timeoutId = setTimeout(function(){ ctrl.abort(); }, 20000);
-
-  try {
-    var resp = await fetch(window.location.pathname, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json' },
-      body: new FormData(this),
-      signal: ctrl.signal,
-      credentials: 'same-origin'
+document.querySelectorAll('.slot-btn').forEach(function(b){
+  b.style.display = 'none';
+  b.onclick = function(){
+    document.querySelectorAll('.slot-btn').forEach(function(x){
+      x.style.background='rgba(16,185,129,0.08)';x.style.color='#10B981';x.style.borderColor='var(--border-subtle)';
     });
-    clearTimeout(timeoutId);
-
-    var data = null;
-    try { data = await resp.json(); } catch(_){ /* server returned redirect HTML */ }
-
-    if(resp.ok && data && data.success && data.redirect_url){
-      window.location.href = data.redirect_url;
-      return;
-    }
-    if(data && data.redirect_url){
-      // e.g. existing active booking
-      window.location.href = data.redirect_url;
-      return;
-    }
-    var errMsg = (data && data.error) ? data.error : 'Booking failed. Please try again.';
-    alert(errMsg);
-
-  } catch(err){
-    clearTimeout(timeoutId);
-    console.error('[Book] error:', err);
-    if(err.name === 'AbortError'){
-      alert('Server is slow. Please check your connection and try again.');
-    } else {
-      alert('Network error. Please try again.');
-    }
-  } finally {
-    submitPending = false;
-    btn.innerHTML = origText;
-    btn.disabled  = false;
-    btn.style.opacity = '1';
-    document.getElementById('loadingOverlay').style.display = 'none';
-    startSlotAutoRefresh(); // resume polling
-  }
+    b.style.background='linear-gradient(135deg,#6366F1,#22D3EE)';b.style.color='white';b.style.borderColor='#22D3EE';
+    selectedSlotId = b.getAttribute('data-slot-id');
+    document.getElementById('slotIdField').value = selectedSlotId;
+    document.getElementById('slotMsg').textContent = 'Slot ' + b.textContent.trim() + ' selected.';
+  };
 });
 
-// ─── SILENT 3-second auto-refresh of slot availability ───
-function refreshSlots(){
-  fetch('/api/lot/' + LOT_ID + '/slots', { headers: { 'Accept':'application/json' }, cache:'no-cache' })
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(data){
-      if(!data || !data.slots) return;
-      var grid = document.getElementById('slotPickerGrid');
-      var existingTiles = {};
-      if(grid){
-        grid.querySelectorAll('.slot-tile').forEach(function(t){
-          existingTiles[t.id.replace('st-','')] = t;
-        });
-      }
-      // Update statuses silently
-      data.slots.forEach(function(s){
-        var tile = existingTiles[s.id];
-        if(!tile) return;
-        var inp = document.querySelector('#slotPickerGrid input[value="'+s.id+'"]');
-        if(s.status === 'occupied'){
-          if(tile.classList.contains('slot-avail')){
-            tile.classList.remove('slot-avail');
-            tile.classList.add('slot-occupied');
-            if(inp){
-              if(inp.checked){
-                inp.checked = false;
-                document.getElementById('selectedSlotInfo').textContent = 'Slot was just taken — please pick another.';
-                selectedSlotType = null;
-                tile.style.boxShadow = ''; tile.style.transform = '';
-              }
-            }
-          }
-        } else if(s.status === 'available'){
-          if(tile.classList.contains('slot-occupied')){
-            tile.classList.remove('slot-occupied');
-            tile.classList.add('slot-avail');
-            var lbl = tile.closest('label');
-            if(lbl) lbl.style.pointerEvents = '';
-          }
-        }
-      });
-      // Reapply vehicle-type dimming after refresh
-      updateVehicleUI();
-    })
-    .catch(function(){ /* silent */ });
-}
-
-function startSlotAutoRefresh(){
-  if(window._slotRefreshTimer) return;
-  window._slotRefreshTimer = setInterval(refreshSlots, 3000);
-}
-
-updateVehicleUI();
-startSlotAutoRefresh();
-document.addEventListener('visibilitychange', function(){
-  if(document.hidden){
-    if(window._slotRefreshTimer){ clearInterval(window._slotRefreshTimer); window._slotRefreshTimer = null; }
-  } else { startSlotAutoRefresh(); }
-});
+/* Auto-refresh slot grid every 4s */
+window.SE_AUTOREFRESH = function(){
+  fetch('/api/lot/{{ lot.id }}/slots', {cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    if(!d.ok) return;
+    document.getElementById('avail2w').textContent = d.avail_2w;
+    document.getElementById('avail4w').textContent = d.avail_4w;
+    var grid = document.getElementById('slotGrid');
+    var available = d.slots.filter(function(s){return s.status==='available';});
+    grid.innerHTML = available.map(function(s){
+      var sel = (s.id == selectedSlotId);
+      var bg  = sel ? 'background:linear-gradient(135deg,#6366F1,#22D3EE);color:white;' : 'background:rgba(16,185,129,0.08);color:#10B981;';
+      return '<button type="button" class="slot-btn" data-slot-id="'+s.id+'" data-slot-type="'+s.slot_type+'" style="padding:10px 4px;border-radius:8px;border:1px solid var(--border-subtle);'+bg+'cursor:pointer;font-size:12px;font-weight:600;font-family:JetBrains Mono,monospace;'+(selectedVT && s.slot_type!==selectedVT?'display:none;':'')+'">'+s.label+'</button>';
+    }).join('');
+    // Re-bind click
+    grid.querySelectorAll('.slot-btn').forEach(function(b){
+      b.onclick = function(){
+        grid.querySelectorAll('.slot-btn').forEach(function(x){x.style.background='rgba(16,185,129,0.08)';x.style.color='#10B981';});
+        b.style.background='linear-gradient(135deg,#6366F1,#22D3EE)';b.style.color='white';
+        selectedSlotId = b.getAttribute('data-slot-id');
+        document.getElementById('slotIdField').value = selectedSlotId;
+        document.getElementById('slotMsg').textContent = 'Slot ' + b.textContent.trim() + ' selected.';
+      };
+    });
+    if(selectedSlotId && !available.find(function(s){return s.id == selectedSlotId;})){
+      selectedSlotId = null;
+      document.getElementById('slotIdField').value = '';
+      document.getElementById('slotMsg').textContent = '⚠️ Your selected slot was just taken — pick another.';
+    }
+  }).catch(function(){});
+};
 </script>
 {% endblock %}
