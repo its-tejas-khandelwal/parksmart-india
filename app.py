@@ -558,15 +558,19 @@ def book_slot(lid):
         vehicle_no   = request.form.get('vehicle_no', '').strip().upper()
         vehicle_type = request.form.get('vehicle_type', '4w')
         if not slot_id or not vehicle_no:
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'error': 'Please select a slot and enter your vehicle number.'}), 400
             flash('Please select a slot and enter your vehicle number.', 'danger')
             return render_template('book_slot.html', lot=lot, slots=available_slots)
         slot = db.session.get(ParkingSlot, int(slot_id))
         if not slot or slot.status != 'available':
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'error': 'Slot no longer available.'}), 400
             flash('Slot no longer available.', 'warning')
             return redirect(url_for('book_slot', lid=lid))
         slot.status = 'occupied'
         res = Reservation(customer_id=current_user.id, slot_id=slot.id,
-                          vehicle_no=vehicle_no, vehicle_type=vehicle_type, entry_time=now_ist())
+                          vehicle_no=vehicle_no, vehicle_type=vehicle_type, entry_time=datetime.utcnow())
         db.session.add(res); db.session.commit()
         flash('Booking confirmed!', 'success')
         try:
@@ -580,6 +584,10 @@ def book_slot(lid):
                 send_email(vendor.email, f'New Booking at {lot.name} | SpotEasy', vhtml)
         except Exception as e:
             print(f'[Email] Failed: {e}')
+        
+        if request.headers.get('Accept') == 'application/json':
+            return jsonify({'success': True, 'redirect_url': url_for('digital_pass', rid=res.id)})
+            
         return redirect(url_for('digital_pass', rid=res.id))
     return render_template('book_slot.html', lot=lot, slots=available_slots)
 
@@ -605,7 +613,7 @@ def checkout(rid):
         flash('Not authorised.', 'danger')
         return redirect(url_for('index'))
     payment_method = request.form.get('payment_method', 'cash')
-    exit_time      = now_ist()
+    exit_time      = datetime.utcnow()
     res.exit_time  = exit_time
     res.status     = 'completed'
     raw_amount     = calculate_bill(res.entry_time, exit_time, res.vehicle_type,
@@ -623,6 +631,10 @@ def checkout(rid):
         send_email(current_user.email, f'Bill Receipt - Rs.{res.amount_paid} | SpotEasy', html)
     except Exception as e:
         print(f'[Checkout Email] Failed: {e}')
+        
+    if request.headers.get('Accept') == 'application/json':
+        return jsonify({'success': True, 'redirect_url': url_for('digital_pass', rid=rid)})
+        
     return redirect(url_for('digital_pass', rid=rid))
 
 @app.route('/account', methods=['GET', 'POST'])
