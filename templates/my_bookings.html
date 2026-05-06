@@ -1,10 +1,43 @@
 {% extends "base.html" %}
 {% block title %}My Bookings — SpotEasy{% endblock %}
 {% block content %}
-<div style="margin-bottom:24px;" class="anim-item visible">
-  <h1 class="syne" style="font-size:24px;font-weight:700;">My Bookings</h1>
-  <p style="color:var(--text-secondary);font-size:14px;margin-top:4px;">All your parking reservations</p>
+<div style="margin-bottom:18px;" class="anim-item visible">
+  <a href="{{ url_for('customer_dashboard') }}" style="color:var(--text-secondary);text-decoration:none;font-size:13px;">← Dashboard</a>
+  <h1 class="syne" style="font-size:24px;font-weight:700;margin-top:8px;">My Bookings</h1>
+  <p style="color:var(--text-secondary);font-size:13px;margin-top:3px;">{{ reservations|length }} total</p>
 </div>
-<p style="color:var(--text-secondary);font-size:14px;">Redirecting to dashboard...</p>
-<script>window.location.href="{{ url_for('customer_dashboard') }}";</script>
+
+{% if reservations %}
+<div style="display:flex;flex-direction:column;gap:12px;">
+  {% for r in reservations %}
+  <div class="glass-card anim-item visible" style="padding:18px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+    <div style="min-width:0;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;">
+        <h3 class="syne" style="font-size:15px;font-weight:700;">{{ r.slot.lot.name }}</h3>
+        <span class="badge {% if r.status=='active' %}badge-green{% elif r.status=='completed' %}badge-indigo{% else %}badge-red{% endif %}">{{ r.status }}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);">
+        Slot {{ r.slot.label }} · {{ r.vehicle_no }} · {{ '🛵' if r.vehicle_type=='2w' else '🚗' }}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">
+        Entered {{ to_ist(r.entry_time).strftime('%d %b %Y, %I:%M %p') }} IST
+        {% if r.exit_time %} · Exited {{ to_ist(r.exit_time).strftime('%d %b, %I:%M %p') }}{% endif %}
+      </div>
+      {% if r.txn_id %}<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Txn: <span style="color:#22D3EE;font-family:'JetBrains Mono',monospace;">{{ r.txn_id }}</span></div>{% endif %}
+    </div>
+    <div style="text-align:right;">
+      {% if r.amount_paid %}<div class="syne" style="font-size:18px;font-weight:800;color:#F59E0B;">₹{{ r.amount_paid|int }}</div>{% endif %}
+      <a href="{{ url_for('digital_pass', rid=r.id) }}" class="btn-secondary btn-sm" style="margin-top:6px;">View Pass</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="glass-card" style="padding:48px;text-align:center;">
+  <div style="font-size:48px;margin-bottom:8px;">📋</div>
+  <h3 class="syne" style="font-weight:700;font-size:16px;margin-bottom:6px;">No bookings yet</h3>
+  <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">Find a lot and book your first slot.</p>
+  <a href="{{ url_for('lots_list') }}" class="btn-primary">Find Parking →</a>
+</div>
+{% endif %}
 {% endblock %}
