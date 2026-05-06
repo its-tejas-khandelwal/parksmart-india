@@ -1,10 +1,152 @@
 {% extends "base.html" %}
-{% block title %}500 — Server Error{% endblock %}
+{% block title %}Admin Dashboard — SpotEasy{% endblock %}
 {% block content %}
-<div style="text-align:center;padding:80px 20px;">
-  <div style="font-size:80px;margin-bottom:16px;">⚠️</div>
-  <h1 class="syne" style="font-size:48px;font-weight:800;margin-bottom:8px;color:#F43F5E;">500</h1>
-  <p style="color:var(--text-secondary);font-size:18px;margin-bottom:28px;">Something went wrong on our end.</p>
-  <a href="{{ url_for('index') }}" class="btn-primary">← Back to Home</a>
+{% set pending_vendors = vendors|selectattr('is_approved','eq',false)|list %}
+{% set pending_lots = lots|selectattr('is_active','eq',false)|list %}
+{% set active_res = reservations|selectattr('status','eq','active')|list %}
+{% set total_rev = reservations|selectattr('status','eq','completed')|sum(attribute='amount_paid') %}
+
+<div style="margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;" class="anim-item visible">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+      <h1 class="syne" style="font-size:24px;font-weight:700;">⚙️ Admin Control Center</h1>
+      {% if pending_vendors %}<span class="badge badge-amber"><span class="pulse-dot pulse-amber"></span>{{ pending_vendors|length }} vendors pending</span>{% endif %}
+      {% if pending_lots %}<span class="badge badge-amber"><span class="pulse-dot pulse-amber"></span>{{ pending_lots|length }} lots pending</span>{% endif %}
+      {% if pending_edits %}<span class="badge badge-indigo">📝 {{ pending_edits|length }} edits pending</span>{% endif %}
+    </div>
+    <p style="color:var(--text-secondary);font-size:13px;">SpotEasy platform management</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{{ url_for('add_lot') }}" class="btn-primary">➕ Add Lot</a>
+    <a href="{{ url_for('admin_notify') }}" class="btn-secondary">📧 Notify users</a>
+    <a href="{{ url_for('db_view') }}" class="btn-secondary">🗄️ DB View</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px;">
+  <div class="glass-card" style="padding:18px;"><div style="font-size:11px;color:var(--text-muted);">Users</div><div class="syne gradient-text" style="font-size:26px;font-weight:800;">{{ vendors|length + customers|length }}</div></div>
+  <div class="glass-card" style="padding:18px;"><div style="font-size:11px;color:var(--text-muted);">Lots</div><div class="syne" style="font-size:26px;font-weight:800;color:#22D3EE;">{{ lots|length }}</div></div>
+  <div class="glass-card" style="padding:18px;"><div style="font-size:11px;color:var(--text-muted);">Active Bookings</div><div class="syne" style="font-size:26px;font-weight:800;color:#10B981;">{{ active_res|length }}</div></div>
+  <div class="glass-card" style="padding:18px;"><div style="font-size:11px;color:var(--text-muted);">Revenue</div><div class="syne" style="font-size:26px;font-weight:800;color:#F59E0B;">₹{{ total_rev|int if total_rev else 0 }}</div></div>
+</div>
+
+{% if pending_edits %}
+<h2 class="syne" style="font-size:18px;font-weight:700;margin-bottom:12px;">📝 Lot edits awaiting approval</h2>
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+  {% for lot in pending_edits %}
+  {% set p = lot.get_pending_edit() %}
+  <div class="glass-card" style="padding:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
+      <div>
+        <h3 class="syne" style="font-size:15px;font-weight:700;">{{ lot.name }}</h3>
+        <div style="font-size:12px;color:var(--text-secondary);">By: {{ lot.owner.name }} ({{ lot.owner.email }})</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <form method="post" action="{{ url_for('approve_lot_edit', lid=lot.id) }}" style="display:inline;"><button class="btn-primary btn-sm">✅ Approve</button></form>
+        <form method="post" action="{{ url_for('reject_lot_edit', lid=lot.id) }}" style="display:inline;"><button class="btn-danger btn-sm">❌ Reject</button></form>
+      </div>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;color:var(--text-secondary);">
+      {% if p %}
+        {% for k, v in p.items() %}
+          <div><span style="color:var(--text-muted);">{{ k }}:</span> <span style="color:var(--text-primary);">{{ v }}</span> <span style="color:#F59E0B;">(was: {{ lot[k] if k in ['name','address','city','rate_2w','rate_4w','upi_id','latitude','longitude'] else '—' }})</span></div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if pending_vendors %}
+<h2 class="syne" style="font-size:18px;font-weight:700;margin-bottom:12px;">⏳ Vendors awaiting approval</h2>
+<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+  {% for v in pending_vendors %}
+  <div class="glass-card" style="padding:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-weight:600;">{{ v.name }}</div>
+      <div style="font-size:12px;color:var(--text-secondary);">{{ v.email }}{% if v.phone %} · {{ v.phone }}{% endif %}</div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <form method="post" action="{{ url_for('approve_vendor', uid=v.id) }}"><button class="btn-primary btn-sm">✅ Approve</button></form>
+      <form method="post" action="{{ url_for('admin_delete_user', uid=v.id) }}" onsubmit="return confirm('Delete vendor?');"><button class="btn-danger btn-sm">🗑️ Delete</button></form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if pending_lots %}
+<h2 class="syne" style="font-size:18px;font-weight:700;margin-bottom:12px;">🏗️ Lots awaiting approval</h2>
+<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+  {% for lot in pending_lots %}
+  <div class="glass-card" style="padding:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-weight:600;">{{ lot.name }}</div>
+      <div style="font-size:12px;color:var(--text-secondary);">📍 {{ lot.city }} · {{ lot.total_slots }} slots · By {{ lot.owner.name }}</div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <form method="post" action="{{ url_for('approve_lot', lid=lot.id) }}"><button class="btn-primary btn-sm">✅ Approve</button></form>
+      <a href="{{ url_for('edit_lot', lid=lot.id) }}" class="btn-secondary btn-sm">✏️ Edit</a>
+      <form method="post" action="{{ url_for('admin_delete_lot', lid=lot.id) }}" onsubmit="return confirm('Delete lot?');"><button class="btn-danger btn-sm">🗑️</button></form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2 class="syne" style="font-size:18px;font-weight:700;margin-bottom:12px;">All Lots</h2>
+<div class="glass-card" style="overflow:hidden;margin-bottom:24px;">
+{% if lots %}
+<div style="overflow-x:auto;">
+<table class="data-table">
+<thead><tr><th>Name</th><th>Owner</th><th>City</th><th>Slots</th><th>Free</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody>
+{% for l in lots %}
+<tr>
+  <td>{{ l.name }}{% if l.has_pending_edit %} <span class="badge badge-indigo" style="font-size:9px;">edit pending</span>{% endif %}</td>
+  <td style="color:var(--text-secondary);">{{ l.owner.name }}</td>
+  <td>{{ l.city }}</td>
+  <td>{{ l.total_slots }}</td>
+  <td style="color:#10B981;">{{ l.available_count }}</td>
+  <td><span class="badge {% if l.is_active %}badge-green{% else %}badge-amber{% endif %}">{{ 'Live' if l.is_active else 'Pending' }}</span></td>
+  <td>
+    <a href="{{ url_for('edit_lot', lid=l.id) }}" class="btn-secondary btn-sm" style="margin-right:4px;">✏️</a>
+    <a href="{{ url_for('vendor_lot_grid', lid=l.id) }}" class="btn-secondary btn-sm" style="margin-right:4px;">🅿️</a>
+    <form method="post" action="{{ url_for('admin_delete_lot', lid=l.id) }}" style="display:inline;" onsubmit="return confirm('Delete lot?');"><button class="btn-danger btn-sm">🗑️</button></form>
+  </td>
+</tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% else %}
+<div style="padding:30px;text-align:center;color:var(--text-muted);">No lots yet.</div>
+{% endif %}
+</div>
+
+<h2 class="syne" style="font-size:18px;font-weight:700;margin-bottom:12px;">Recent Reservations</h2>
+<div class="glass-card" style="overflow:hidden;">
+{% if reservations %}
+<div style="overflow-x:auto;">
+<table class="data-table">
+<thead><tr><th>Customer</th><th>Lot</th><th>Slot</th><th>Vehicle</th><th>Amount</th><th>Pay</th><th>Status</th></tr></thead>
+<tbody>
+{% for r in reservations %}
+<tr>
+  <td>{{ r.customer.name }}</td>
+  <td>{{ r.slot.lot.name }}</td>
+  <td>{{ r.slot.label }}</td>
+  <td>{{ r.vehicle_no }}</td>
+  <td>{% if r.amount_paid %}₹{{ r.amount_paid|int }}{% else %}—{% endif %}</td>
+  <td style="font-size:11px;color:var(--text-muted);">{{ r.payment_method or 'cash' }}{% if r.txn_id %} · <span style="color:#22D3EE;">{{ r.txn_id[:14] }}</span>{% endif %}</td>
+  <td><span class="badge {% if r.status=='active' %}badge-green{% elif r.status=='completed' %}badge-indigo{% else %}badge-red{% endif %}">{{ r.status }}</span></td>
+</tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% else %}
+<div style="padding:30px;text-align:center;color:var(--text-muted);">No reservations yet.</div>
+{% endif %}
 </div>
 {% endblock %}

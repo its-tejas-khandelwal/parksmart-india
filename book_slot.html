@@ -1,6 +1,121 @@
-// SpotEasy Live — Slot polling helper (no Firebase, no push notifications)
-'use strict';
+{% extends "base.html" %}
+{% block title %}Book Slot — {{ lot.name }}{% endblock %}
+{% block content %}
+<div style="max-width:620px;margin:0 auto;">
+  <div style="margin-bottom:18px;" class="anim-item visible">
+    <a href="{{ url_for('lots_list') }}" style="color:var(--text-secondary);text-decoration:none;font-size:13px;">← Back to Lots</a>
+    <h1 class="syne" style="font-size:22px;font-weight:700;margin-top:8px;">Book a Slot</h1>
+    <p style="color:var(--text-secondary);font-size:13px;margin-top:3px;">📍 {{ lot.name }}, {{ lot.city }}</p>
+  </div>
 
-// Polled slot refresh for lot pages — called from lot_grid.html directly
-// This file is kept as a stub for SW compatibility
-console.log('[SpotEasy] Live module loaded');
+  <!-- Live availability strip -->
+  <div class="glass-card anim-item visible" style="padding:14px 18px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;">
+    <div style="display:flex;gap:18px;flex-wrap:wrap;">
+      <div><span style="font-size:18px;">🛵</span> <span style="font-weight:700;color:#F59E0B;" id="avail2w">{{ lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length }}</span><span style="font-size:11px;color:var(--text-muted);"> · ₹{{ lot.rate_2w }}/hr</span></div>
+      <div><span style="font-size:18px;">🚗</span> <span style="font-weight:700;color:#22D3EE;" id="avail4w">{{ lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length }}</span><span style="font-size:11px;color:var(--text-muted);"> · ₹{{ lot.rate_4w }}/hr</span></div>
+    </div>
+    <span class="badge badge-green"><span class="pulse-dot pulse-green"></span>Live</span>
+  </div>
+
+  <form method="post" id="bookForm" class="glass-card anim-item visible" style="padding:24px;">
+    <div style="margin-bottom:16px;">
+      <label class="label-text">Vehicle Type *</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <label style="border:1px solid var(--border-subtle);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px;" id="lbl2w">
+          <input type="radio" name="vehicle_type" value="2w" required onchange="setVT('2w')"/> 🛵 2-Wheeler
+        </label>
+        <label style="border:1px solid var(--border-subtle);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px;" id="lbl4w">
+          <input type="radio" name="vehicle_type" value="4w" required onchange="setVT('4w')"/> 🚗 4-Wheeler
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label class="label-text">Vehicle Number *</label>
+      <input type="text" name="vehicle_no" class="inp" placeholder="UP78AB1234" required minlength="4" maxlength="20" style="text-transform:uppercase;"/>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label class="label-text">Choose a slot *</label>
+      <div id="slotGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:240px;overflow:auto;padding:10px;background:rgba(0,0,0,0.15);border-radius:10px;">
+        {% for s in slots %}
+        <button type="button" class="slot-btn" data-slot-id="{{ s.id }}" data-slot-type="{{ s.slot_type }}"
+          style="padding:10px 4px;border-radius:8px;border:1px solid var(--border-subtle);background:rgba(16,185,129,0.08);color:#10B981;cursor:pointer;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;">
+          {{ s.label }}
+        </button>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="slot_id" id="slotIdField" required/>
+      <div id="slotMsg" style="font-size:12px;color:var(--text-muted);margin-top:6px;">Select your vehicle type first to filter slots.</div>
+    </div>
+
+    <button type="submit" class="btn-primary" style="width:100%;padding:13px;" id="submitBtn">Book Slot →</button>
+    <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:10px;">FREE if you exit within 15 minutes. Pay at exit (cash or UPI).</p>
+  </form>
+</div>
+
+<script>
+var selectedVT = null;
+var selectedSlotId = null;
+
+function setVT(vt){
+  selectedVT = vt;
+  document.getElementById('lbl2w').style.borderColor = vt==='2w' ? '#F59E0B' : 'var(--border-subtle)';
+  document.getElementById('lbl4w').style.borderColor = vt==='4w' ? '#22D3EE' : 'var(--border-subtle)';
+  document.querySelectorAll('.slot-btn').forEach(function(b){
+    if(b.getAttribute('data-slot-type') === vt){
+      b.style.display = '';
+    } else {
+      b.style.display = 'none';
+    }
+  });
+  document.getElementById('slotMsg').textContent = 'Click an available slot.';
+  selectedSlotId = null;
+  document.getElementById('slotIdField').value = '';
+}
+
+document.querySelectorAll('.slot-btn').forEach(function(b){
+  b.style.display = 'none';
+  b.onclick = function(){
+    document.querySelectorAll('.slot-btn').forEach(function(x){
+      x.style.background='rgba(16,185,129,0.08)';x.style.color='#10B981';x.style.borderColor='var(--border-subtle)';
+    });
+    b.style.background='linear-gradient(135deg,#6366F1,#22D3EE)';b.style.color='white';b.style.borderColor='#22D3EE';
+    selectedSlotId = b.getAttribute('data-slot-id');
+    document.getElementById('slotIdField').value = selectedSlotId;
+    document.getElementById('slotMsg').textContent = 'Slot ' + b.textContent.trim() + ' selected.';
+  };
+});
+
+/* Auto-refresh slot grid every 4s */
+window.SE_AUTOREFRESH = function(){
+  fetch('/api/lot/{{ lot.id }}/slots', {cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    if(!d.ok) return;
+    document.getElementById('avail2w').textContent = d.avail_2w;
+    document.getElementById('avail4w').textContent = d.avail_4w;
+    var grid = document.getElementById('slotGrid');
+    var available = d.slots.filter(function(s){return s.status==='available';});
+    grid.innerHTML = available.map(function(s){
+      var sel = (s.id == selectedSlotId);
+      var bg  = sel ? 'background:linear-gradient(135deg,#6366F1,#22D3EE);color:white;' : 'background:rgba(16,185,129,0.08);color:#10B981;';
+      return '<button type="button" class="slot-btn" data-slot-id="'+s.id+'" data-slot-type="'+s.slot_type+'" style="padding:10px 4px;border-radius:8px;border:1px solid var(--border-subtle);'+bg+'cursor:pointer;font-size:12px;font-weight:600;font-family:JetBrains Mono,monospace;'+(selectedVT && s.slot_type!==selectedVT?'display:none;':'')+'">'+s.label+'</button>';
+    }).join('');
+    // Re-bind click
+    grid.querySelectorAll('.slot-btn').forEach(function(b){
+      b.onclick = function(){
+        grid.querySelectorAll('.slot-btn').forEach(function(x){x.style.background='rgba(16,185,129,0.08)';x.style.color='#10B981';});
+        b.style.background='linear-gradient(135deg,#6366F1,#22D3EE)';b.style.color='white';
+        selectedSlotId = b.getAttribute('data-slot-id');
+        document.getElementById('slotIdField').value = selectedSlotId;
+        document.getElementById('slotMsg').textContent = 'Slot ' + b.textContent.trim() + ' selected.';
+      };
+    });
+    if(selectedSlotId && !available.find(function(s){return s.id == selectedSlotId;})){
+      selectedSlotId = null;
+      document.getElementById('slotIdField').value = '';
+      document.getElementById('slotMsg').textContent = '⚠️ Your selected slot was just taken — pick another.';
+    }
+  }).catch(function(){});
+};
+</script>
+{% endblock %}

@@ -1,130 +1,415 @@
-{% extends "base.html" %}
-{% block title %}Find Parking — SpotEasy{% endblock %}
-{% block content %}
-<div style="margin-bottom:24px;" class="anim-item visible">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
-    <h1 class="syne" style="font-size:26px;font-weight:700;">Find Parking</h1>
-    <span class="badge badge-green"><span class="pulse-dot pulse-green"></span>Live</span>
-  </div>
-  <p style="color:var(--text-secondary);font-size:14px;">{{ lots|length }} active lot{{ 's' if lots|length != 1 }} available now</p>
-</div>
-
-<div style="display:grid;grid-template-columns:1fr;gap:20px;" id="mainGrid">
-  <!-- Map -->
-  <div class="glass-card" style="padding:0;overflow:hidden;height:300px;border-radius:14px;">
-    <div id="map" style="width:100%;height:100%;"></div>
-  </div>
-
-  <!-- Lot cards -->
-  <div style="display:flex;flex-direction:column;gap:14px;">
-    {% if lots %}
-      {% for lot in lots %}
-      {% set avail_2w = lot.slots|selectattr('slot_type','eq','2w')|selectattr('status','eq','available')|list|length %}
-      {% set avail_4w = lot.slots|selectattr('slot_type','eq','4w')|selectattr('status','eq','available')|list|length %}
-      {% set pct = (lot.available_count / lot.total_slots * 100)|round|int if lot.total_slots > 0 else 0 %}
-      <div class="glass-card glass-card-hover anim-item visible" style="padding:20px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;">
-          <div style="min-width:0;">
-            <h3 class="syne" style="font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text-primary);">{{ lot.name }}</h3>
-            <p style="font-size:12px;color:var(--text-secondary);">📍 {{ lot.address }}, {{ lot.city }}</p>
-          </div>
-          <span class="badge {% if lot.available_count > 0 %}badge-green{% else %}badge-red{% endif %}" style="flex-shrink:0;">
-            {% if lot.available_count > 0 %}{{ lot.available_count }} free{% else %}Full{% endif %}
-          </span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
-            <span style="font-size:20px;">🛵</span>
-            <div>
-              <div style="font-weight:700;font-size:14px;color:#F59E0B;">{{ avail_2w }} free</div>
-              <div style="font-size:11px;color:var(--text-muted);">2-Wheeler · ₹{{ lot.rate_2w }}/hr</div>
-            </div>
-          </div>
-          <div style="background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
-            <span style="font-size:20px;">🚗</span>
-            <div>
-              <div style="font-weight:700;font-size:14px;color:#22D3EE;">{{ avail_4w }} free</div>
-              <div style="font-size:11px;color:var(--text-muted);">4-Wheeler · ₹{{ lot.rate_4w }}/hr</div>
-            </div>
-          </div>
-        </div>
-        <div class="occ-bar" style="margin-bottom:14px;">
-          <div class="occ-fill" style="width:{{ pct }}%;background:{% if pct > 70 %}#10B981{% elif pct > 30 %}#F59E0B{% else %}#F43F5E{% endif %};"></div>
-        </div>
-        {% if current_user.is_authenticated and current_user.role == 'customer' %}
-          {% if lot.available_count > 0 %}
-          <a href="{{ url_for('book_slot', lid=lot.id) }}" class="btn-primary" style="width:100%;justify-content:center;padding:11px;">Book Now →</a>
-          {% else %}
-          <button disabled style="width:100%;padding:11px;border-radius:10px;background:rgba(128,128,128,0.08);border:1px solid var(--border-subtle);color:var(--text-muted);font-size:14px;cursor:not-allowed;">Lot Full</button>
-          {% endif %}
-        {% elif not current_user.is_authenticated %}
-        <a href="{{ url_for('login') }}" class="btn-primary" style="width:100%;justify-content:center;padding:11px;">Login to Book →</a>
-        {% endif %}
-      </div>
-      {% endfor %}
-    {% else %}
-    <div class="glass-card" style="padding:48px;text-align:center;">
-      <div style="font-size:48px;margin-bottom:12px;">🏗️</div>
-      <h3 class="syne" style="font-size:18px;font-weight:600;margin-bottom:8px;color:var(--text-primary);">No lots yet</h3>
-      <p style="color:var(--text-secondary);font-size:14px;">Parking lots will appear here once approved by admin.</p>
-    </div>
-    {% endif %}
-  </div>
-</div>
-
-{% endblock %}
-{% block scripts %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>{% block title %}SpotEasy — Smart Parking India{% endblock %}</title>
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}"/>
+<meta name="theme-color" content="#06080F"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="SpotEasy"/>
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-96.png') }}"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-@media(min-width:900px){
-  #mainGrid{grid-template-columns:1fr 1fr;}
-  #mainGrid>:first-child{height:calc(100vh - 160px);max-height:600px;position:sticky;top:80px;}
-  #mainGrid>:last-child{max-height:600px;overflow-y:auto;padding-right:2px;}
-  #mainGrid>:last-child::-webkit-scrollbar{width:3px;}
-  #mainGrid>:last-child::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.3);border-radius:99px;}
+:root{
+  --bg-primary:#06080F; --bg-secondary:#0D1117; --bg-tertiary:#161B22;
+  --text-primary:#F0F6FC; --text-secondary:#8B949E; --text-muted:#6E7681;
+  --border-subtle:rgba(240,246,252,0.08); --border-medium:rgba(240,246,252,0.16);
+  --indigo:#6366F1; --cyan:#22D3EE; --amber:#F59E0B; --green:#10B981; --red:#F43F5E;
 }
+body.light{
+  --bg-primary:#F4F6FA; --bg-secondary:#FFFFFF; --bg-tertiary:#F0F2F7;
+  --text-primary:#0F172A; --text-secondary:#475569; --text-muted:#94A3B8;
+  --border-subtle:rgba(15,23,42,0.08); --border-medium:rgba(15,23,42,0.14);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{font-family:'DM Sans',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;}
+body{padding-top:64px;}
+.syne{font-family:'Syne',sans-serif;}
+.gradient-text{background:linear-gradient(135deg,var(--indigo),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(6,8,15,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border-subtle);}
+body.light .nav{background:rgba(255,255,255,0.85);}
+.nav-inner{max-width:1200px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text-primary);}
+.brand-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#16a34a,#10B981);display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-family:'Syne',sans-serif;}
+.brand-name{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;}
+.nav-links{display:flex;align-items:center;gap:16px;}
+.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:14px;font-weight:500;}
+.nav-links a:hover{color:var(--text-primary);}
+.nav-icon-btn{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid var(--border-subtle);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;}
+.nav-icon-btn:hover{background:var(--bg-tertiary);}
+.notif-badge{position:absolute;top:-4px;right:-4px;background:#F43F5E;color:white;font-size:10px;font-weight:700;border-radius:99px;min-width:16px;height:16px;padding:0 4px;display:flex;align-items:center;justify-content:center;}
+
+/* CONTAINER */
+.container{max-width:1200px;margin:0 auto;padding:24px 20px 80px;position:relative;z-index:1;}
+@media(max-width:600px){.container{padding:18px 14px 60px;}.nav-links{gap:8px;}.nav-links .label-hide{display:none;}}
+
+/* CARDS */
+.glass-card{background:rgba(255,255,255,0.03);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--border-subtle);border-radius:14px;}
+body.light .glass-card{background:rgba(255,255,255,0.95);box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.glass-card-hover{transition:transform .18s,border-color .18s;}
+.glass-card-hover:hover{transform:translateY(-2px);border-color:var(--border-medium);}
+
+/* BUTTONS */
+.btn-primary,.btn-secondary,.btn-danger{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;text-decoration:none;transition:all .15s;}
+.btn-primary{background:linear-gradient(135deg,var(--indigo),var(--cyan));color:white;}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(99,102,241,0.3);}
+.btn-secondary{background:rgba(255,255,255,0.04);border:1px solid var(--border-subtle);color:var(--text-primary);}
+.btn-secondary:hover{background:rgba(255,255,255,0.08);}
+.btn-danger{background:rgba(244,63,94,0.12);color:#F43F5E;border:1px solid rgba(244,63,94,0.25);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+
+/* INPUTS */
+.inp{width:100%;padding:11px 13px;background:rgba(13,17,23,0.6);border:1px solid var(--border-subtle);border-radius:10px;color:var(--text-primary);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;}
+body.light .inp{background:#fff;}
+.inp:focus{border-color:var(--indigo);}
+.label-text{display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
+.badge-green{background:rgba(16,185,129,0.12);color:#10B981;border:1px solid rgba(16,185,129,0.25);}
+.badge-amber{background:rgba(245,158,11,0.12);color:#F59E0B;border:1px solid rgba(245,158,11,0.25);}
+.badge-red{background:rgba(244,63,94,0.12);color:#F43F5E;border:1px solid rgba(244,63,94,0.25);}
+.badge-indigo{background:rgba(99,102,241,0.12);color:#6366F1;border:1px solid rgba(99,102,241,0.25);}
+.pulse-dot{width:6px;height:6px;border-radius:50%;display:inline-block;animation:pulse 1.6s ease-in-out infinite;}
+.pulse-green{background:#10B981;box-shadow:0 0 0 0 rgba(16,185,129,0.6);}
+.pulse-amber{background:#F59E0B;box-shadow:0 0 0 0 rgba(245,158,11,0.6);}
+.pulse-red{background:#F43F5E;box-shadow:0 0 0 0 rgba(244,63,94,0.6);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+
+/* OCC BAR */
+.occ-bar{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden;}
+.occ-fill{height:100%;border-radius:99px;transition:width .35s ease;}
+
+/* TABLES */
+.data-table{width:100%;border-collapse:collapse;}
+.data-table th,.data-table td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border-subtle);}
+.data-table th{font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;}
+
+/* ANIM */
+.anim-item{opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s;}
+.anim-item.visible{opacity:1;transform:translateY(0);}
+
+/* FLASH */
+.flash-stack{position:fixed;top:78px;right:18px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:340px;}
+.flash{padding:11px 14px;border-radius:10px;font-size:13px;border:1px solid;animation:slideIn .25s;}
+.flash-success{background:rgba(16,185,129,0.12);color:#10B981;border-color:rgba(16,185,129,0.3);}
+.flash-info{background:rgba(99,102,241,0.12);color:#6366F1;border-color:rgba(99,102,241,0.3);}
+.flash-warning{background:rgba(245,158,11,0.12);color:#F59E0B;border-color:rgba(245,158,11,0.3);}
+.flash-danger,.flash-error{background:rgba(244,63,94,0.12);color:#F43F5E;border-color:rgba(244,63,94,0.3);}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+/* NOTIFICATION DROPDOWN */
+.notif-drop{position:fixed;top:62px;right:18px;width:340px;max-height:480px;overflow:auto;background:var(--bg-secondary);border:1px solid var(--border-medium);border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,0.5);z-index:150;display:none;}
+.notif-drop.open{display:block;}
+.notif-head{padding:12px 16px;border-bottom:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;}
+.notif-item{padding:12px 16px;border-bottom:1px solid var(--border-subtle);cursor:pointer;display:flex;gap:10px;align-items:flex-start;}
+.notif-item:hover{background:var(--bg-tertiary);}
+.notif-item.unread{background:rgba(99,102,241,0.06);}
+.notif-icon{font-size:20px;flex-shrink:0;}
+.notif-text{flex:1;min-width:0;}
+.notif-title{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:2px;}
+.notif-body{font-size:12px;color:var(--text-secondary);line-height:1.4;}
+.notif-time{font-size:11px;color:var(--text-muted);margin-top:3px;}
+
+/* MAP Z-INDEX FIX (the main bug) */
+.map-wrap{position:relative;z-index:1;overflow:hidden;border-radius:14px;}
+.leaflet-container{z-index:1 !important;}
+.leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:2 !important;}
+.leaflet-popup-pane{z-index:3 !important;}
+.leaflet-control{z-index:4 !important;}
+
+/* FOOTER */
+.footer{margin-top:60px;padding:28px 20px;border-top:1px solid var(--border-subtle);text-align:center;font-size:13px;color:var(--text-secondary);}
+.footer a{color:var(--text-secondary);margin:0 12px;text-decoration:none;}
+.footer a:hover{color:var(--text-primary);}
+
+/* UTIL */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.hidden{display:none !important;}
 </style>
+{% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<!-- ─── Top nav ─── -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="{{ url_for('index') }}">
+      <span class="brand-logo">P</span>
+      <span class="brand-name gradient-text">SpotEasy</span>
+    </a>
+    <div class="nav-links">
+      <a href="{{ url_for('lots_list') }}" class="label-hide">Find Parking</a>
+      {% if current_user.is_authenticated %}
+        {% if current_user.role == 'customer' %}<a href="{{ url_for('customer_dashboard') }}" class="label-hide">Dashboard</a>{% endif %}
+        {% if current_user.role == 'vendor' %}<a href="{{ url_for('vendor_dashboard') }}" class="label-hide">Dashboard</a>{% endif %}
+        {% if current_user.role == 'admin' %}<a href="{{ url_for('admin_dashboard') }}" class="label-hide">Admin</a>{% endif %}
+        <button class="nav-icon-btn" id="notifBtn" title="Notifications">
+          🔔
+          <span class="notif-badge {% if not unread_count %}hidden{% endif %}" id="notifBadge">{{ unread_count }}</span>
+        </button>
+        <a href="{{ url_for('account') }}" class="nav-icon-btn" title="Account">👤</a>
+        <a href="{{ url_for('logout') }}" class="nav-icon-btn" title="Logout">⏻</a>
+      {% else %}
+        <a href="{{ url_for('login') }}">Login</a>
+        <a href="{{ url_for('register') }}" class="btn-primary btn-sm">Register</a>
+      {% endif %}
+      <button class="nav-icon-btn" id="themeBtn" title="Toggle theme">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ─── Notification dropdown ─── -->
+{% if current_user.is_authenticated %}
+<div class="notif-drop" id="notifDrop">
+  <div class="notif-head">
+    <span class="syne" style="font-weight:700;">Notifications</span>
+    <button class="btn-secondary btn-sm" id="markAllRead">Mark all read</button>
+  </div>
+  <div id="notifList">
+    <div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px;">Loading…</div>
+  </div>
+  <div style="padding:10px;text-align:center;border-top:1px solid var(--border-subtle);">
+    <a href="{{ url_for('notifications_page') }}" style="font-size:12px;color:var(--indigo);text-decoration:none;">View all</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- ─── Flash messages ─── -->
+{% with msgs = get_flashed_messages(with_categories=true) %}
+{% if msgs %}
+<div class="flash-stack" id="flashStack">
+  {% for cat, msg in msgs %}
+  <div class="flash flash-{{ cat }}">{{ msg }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- ─── Page content ─── -->
+<main class="container">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div>SpotEasy India · 2026 · Smart Parking</div>
+  <div style="margin-top:8px;">
+    <a href="{{ url_for('lots_list') }}">Find Parking</a>
+    <a href="{{ url_for('register') }}">Register</a>
+    <a href="{{ url_for('terms') }}">Terms</a>
+  </div>
+</footer>
+
 <script>
-var lotsData={{ lots_json|tojson|safe }};
+/* ───────── THEME TOGGLE ───────── */
+(function(){
+  var saved = localStorage.getItem('se_theme') || 'dark';
+  if(saved === 'light') document.body.classList.add('light');
+  var btn = document.getElementById('themeBtn');
+  if(btn){
+    btn.textContent = saved === 'light' ? '☀️' : '🌙';
+    btn.onclick = function(){
+      document.body.classList.toggle('light');
+      var now = document.body.classList.contains('light') ? 'light' : 'dark';
+      localStorage.setItem('se_theme', now);
+      btn.textContent = now === 'light' ? '☀️' : '🌙';
+      window.toggleTheme && window.toggleTheme();
+    };
+  }
+})();
 
-// Dark map tiles
-var darkTiles=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© CartoDB'});
-var lightTiles=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© CartoDB'});
+/* ───────── ANIMATE-IN ───────── */
+setTimeout(function(){
+  document.querySelectorAll('.anim-item').forEach(function(el){el.classList.add('visible');});
+}, 60);
 
-var map=L.map('map',{zoomControl:true,attributionControl:false}).setView([22.9734,78.6569],5);
+/* ───────── AUTO-DISMISS FLASH ───────── */
+setTimeout(function(){
+  var s = document.getElementById('flashStack');
+  if(s) s.style.transition = 'opacity .4s', s.style.opacity = '0';
+  setTimeout(function(){ s && s.remove(); }, 500);
+}, 4500);
 
-// Use correct tile layer based on current theme
-function updateMapTheme(){
-  var isLight=document.body.classList.contains('light');
-  if(isLight){map.removeLayer(darkTiles);lightTiles.addTo(map);}
-  else{map.removeLayer(lightTiles);darkTiles.addTo(map);}
-}
-darkTiles.addTo(map);
-
-// Watch for theme changes
-var origToggle=window.toggleTheme;
-window.toggleTheme=function(){origToggle();setTimeout(updateMapTheme,50);};
-setTimeout(updateMapTheme,100);
-
-function makeIcon(avail){
-  var c=avail>0?'#10B981':'#F43F5E';
-  return L.divIcon({html:'<div style="width:22px;height:22px;border-radius:50%;background:'+c+';border:3px solid rgba(255,255,255,0.9);box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>',iconSize:[22,22],iconAnchor:[11,11],className:''});
-}
-if(lotsData.length>0){
-  var bounds=[];
-  lotsData.forEach(function(lot){
-    var m=L.marker([lot.lat,lot.lng],{icon:makeIcon(lot.available)}).addTo(map);
-    m.bindPopup('<div style="font-family:DM Sans,sans-serif;padding:4px;min-width:150px;"><div style="font-weight:700;font-size:14px;margin-bottom:4px;">'+lot.name+'</div><div style="font-size:12px;color:#666;margin-bottom:8px;">'+lot.city+'</div><div style="font-size:13px;font-weight:600;color:'+(lot.available>0?'#10B981':'#F43F5E')+'">'+lot.available+' / '+lot.total+' free</div></div>');
-    bounds.push([lot.lat,lot.lng]);
-  });
-  if(bounds.length)map.fitBounds(bounds,{padding:[40,40]});
-}
-if(navigator.geolocation){
+/* ───────── GEOLOCATION (asks every page; remembers permission) ───────── */
+window.SE_LOC = null;
+(function(){
+  if(!navigator.geolocation) return;
+  var prevDecline = parseInt(sessionStorage.getItem('se_geo_declined') || '0', 10);
+  // Re-ask every 60s if previously declined; instant if not yet asked.
+  if(prevDecline && (Date.now() - prevDecline) < 60000) return;
   navigator.geolocation.getCurrentPosition(function(p){
-    L.circleMarker([p.coords.latitude,p.coords.longitude],{radius:8,fillColor:'#6366F1',color:'#fff',weight:2,fillOpacity:0.9}).addTo(map).bindPopup('📍 You').openPopup();
-    if(lotsData.length===0)map.setView([p.coords.latitude,p.coords.longitude],13);
+    window.SE_LOC = {lat:p.coords.latitude, lng:p.coords.longitude, ts:Date.now()};
+    sessionStorage.setItem('se_geo', JSON.stringify(window.SE_LOC));
+    sessionStorage.removeItem('se_geo_declined');
+    document.dispatchEvent(new CustomEvent('se:geo', {detail: window.SE_LOC}));
+  }, function(err){
+    sessionStorage.setItem('se_geo_declined', Date.now().toString());
+    console.log('[Geo] denied', err && err.message);
+  }, {enableHighAccuracy:false, maximumAge:60000, timeout:8000});
+  // Also load cached if present
+  try{
+    var c = sessionStorage.getItem('se_geo');
+    if(c){ window.SE_LOC = JSON.parse(c); }
+  }catch(e){}
+})();
+
+/* ───────── BROWSER NOTIFICATIONS (request permission once) ───────── */
+{% if current_user.is_authenticated %}
+(function(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'default'){
+    setTimeout(function(){
+      Notification.requestPermission().then(function(p){
+        if(p === 'granted'){
+          new Notification('SpotEasy notifications enabled', {
+            body: 'You will be notified about bookings, approvals and more.',
+            icon: '{{ url_for('static', filename='icons/icon-192.png') }}',
+          });
+        }
+      }).catch(function(){});
+    }, 1500);
+  }
+})();
+{% endif %}
+
+/* ───────── NOTIFICATION POLLING + DROPDOWN ───────── */
+{% if current_user.is_authenticated %}
+(function(){
+  var lastId = 0;
+  var listEl = document.getElementById('notifList');
+  var badge  = document.getElementById('notifBadge');
+  var drop   = document.getElementById('notifDrop');
+  var btn    = document.getElementById('notifBtn');
+  var allItems = [];
+  var browserAllowed = ('Notification' in window) && Notification.permission === 'granted';
+
+  function fmtTime(iso){
+    if(!iso) return '';
+    var d = new Date(iso); var now = new Date();
+    var diff = (now - d) / 1000;
+    if(diff < 60) return 'just now';
+    if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+    if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
+    return d.toLocaleDateString();
+  }
+  function render(){
+    if(!listEl) return;
+    if(!allItems.length){
+      listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px;">No notifications yet.</div>';
+      return;
+    }
+    listEl.innerHTML = allItems.slice(0,15).map(function(n){
+      return '<div class="notif-item '+(n.is_read?'':'unread')+'" data-id="'+n.id+'" data-url="'+(n.url||'')+'">' +
+             '<div class="notif-icon">'+(n.icon||'🔔')+'</div>' +
+             '<div class="notif-text">' +
+               '<div class="notif-title">'+escapeHtml(n.title)+'</div>' +
+               '<div class="notif-body">'+escapeHtml(n.body||'')+'</div>' +
+               '<div class="notif-time">'+fmtTime(n.created_at)+'</div>' +
+             '</div></div>';
+    }).join('');
+    listEl.querySelectorAll('.notif-item').forEach(function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-id');
+        var url = el.getAttribute('data-url');
+        fetch('/api/notifications/' + id + '/read', {method:'POST'});
+        if(url) location.href = url;
+      };
+    });
+  }
+  function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
+
+  function poll(){
+    fetch('/api/notifications' + (lastId ? ('?after_id='+lastId) : ''), {cache:'no-store'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.ok) return;
+        if(badge){
+          if(d.unread > 0){ badge.textContent = d.unread; badge.classList.remove('hidden'); }
+          else { badge.classList.add('hidden'); }
+        }
+        if(d.items && d.items.length){
+          // newest first
+          var newOnes = d.items.filter(function(n){ return n.id > lastId; });
+          if(newOnes.length){
+            // prepend
+            allItems = newOnes.concat(allItems).slice(0,30);
+            lastId = Math.max.apply(null, allItems.map(function(n){return n.id;}));
+            render();
+            // Browser native notification for the newest unread
+            if(browserAllowed){
+              newOnes.filter(function(n){return !n.is_read;}).slice(0,2).forEach(function(n){
+                try{
+                  var bn = new Notification('SpotEasy: '+n.title, {
+                    body: n.body || '',
+                    icon: '{{ url_for('static', filename='icons/icon-192.png') }}',
+                    tag: 'se-'+n.id
+                  });
+                  if(n.url) bn.onclick = function(){ window.focus(); location.href = n.url; };
+                }catch(e){}
+              });
+            }
+          }
+        } else if(!allItems.length){
+          // first load with empty
+          render();
+        }
+      }).catch(function(){});
+  }
+
+  if(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      if(drop){ drop.classList.toggle('open'); }
+    };
+  }
+  document.addEventListener('click', function(e){
+    if(drop && !drop.contains(e.target) && e.target !== btn){
+      drop.classList.remove('open');
+    }
   });
+  var markAll = document.getElementById('markAllRead');
+  if(markAll){
+    markAll.onclick = function(){
+      fetch('/api/notifications/read', {method:'POST'}).then(function(){
+        allItems.forEach(function(n){n.is_read = true;});
+        render();
+        if(badge){ badge.classList.add('hidden'); badge.textContent = '0'; }
+      });
+    };
+  }
+
+  poll();
+  setInterval(poll, 5000);   // poll every 5s
+})();
+{% endif %}
+
+/* ───────── REFRESH ON BACK/FORWARD (no stale data) ───────── */
+window.addEventListener('pageshow', function(e){
+  if(e.persisted){ location.reload(); }
+});
+
+/* ───────── SHARED AUTO-REFRESH HOOK ─────────
+   Pages can opt-in by defining window.SE_AUTOREFRESH = function(){ ... }
+   It will be called every 4 seconds. Built for AJAX background updates. */
+(function(){
+  setInterval(function(){
+    if(typeof window.SE_AUTOREFRESH === 'function'){
+      try{ window.SE_AUTOREFRESH(); }catch(e){console.warn('[autorefresh]',e);}
+    }
+  }, 4000);
+})();
+
+/* ───────── Service worker registration ───────── */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(function(){});
 }
 </script>
-{% endblock %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

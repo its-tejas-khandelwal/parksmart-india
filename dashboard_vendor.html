@@ -1,17 +1,118 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Offline — SpotEasy</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
-<style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#06080F;color:#F0F6FC;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:20px;}</style>
-</head>
-<body>
-<div>
-  <div style="font-size:72px;margin-bottom:20px;">📶</div>
-  <h1 style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;margin-bottom:10px;">You're Offline</h1>
-  <p style="color:#8B949E;font-size:16px;margin-bottom:28px;">Check your internet connection and try again.</p>
-  <button onclick="location.reload()" style="background:linear-gradient(135deg,#6366F1,#22D3EE);color:white;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Retry</button>
+{% extends "base.html" %}
+{% block title %}Vendor Dashboard — SpotEasy{% endblock %}
+{% block content %}
+
+{% if not current_user.is_approved %}
+<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+  <span class="pulse-dot pulse-amber"></span>
+  <span style="font-size:13px;color:#F59E0B;">Your vendor account is <strong>awaiting admin approval</strong>. You can add lots, but they won't go live until approved.</span>
 </div>
-</body>
-</html>
+{% endif %}
+
+<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px;" class="anim-item visible">
+  <div>
+    <h1 class="syne" style="font-size:24px;font-weight:700;">Vendor Dashboard</h1>
+    <p style="color:var(--text-secondary);font-size:13px;margin-top:3px;">{{ current_user.name }} · {{ lots|length }} lot(s)</p>
+  </div>
+  <a href="{{ url_for('add_lot') }}" class="btn-primary">➕ Add New Lot</a>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px;" id="vendorStats">
+  <div class="glass-card" style="padding:18px;">
+    <div style="font-size:11px;color:var(--text-muted);">Total Lots</div>
+    <div class="syne gradient-text" style="font-size:28px;font-weight:800;" data-stat="lots">{{ lots|length }}</div>
+  </div>
+  <div class="glass-card" style="padding:18px;">
+    <div style="font-size:11px;color:var(--text-muted);">Total Slots</div>
+    <div class="syne" style="font-size:28px;font-weight:800;color:#22D3EE;" data-stat="slots">{{ lots|sum(attribute='total_slots') }}</div>
+  </div>
+  <div class="glass-card" style="padding:18px;">
+    <div style="font-size:11px;color:var(--text-muted);">Available Now</div>
+    <div class="syne" style="font-size:28px;font-weight:800;color:#10B981;" data-stat="avail">{{ lots|sum(attribute='available_count') }}</div>
+  </div>
+  <div class="glass-card" style="padding:18px;">
+    <div style="font-size:11px;color:var(--text-muted);">Active Bookings</div>
+    <div class="syne" style="font-size:28px;font-weight:800;color:#F59E0B;" data-stat="bookings">{{ reservations|selectattr('status','eq','active')|list|length }}</div>
+  </div>
+</div>
+
+<h2 class="syne" style="font-size:18px;font-weight:700;margin-bottom:14px;">My Parking Lots</h2>
+{% if lots %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+  {% for lot in lots %}
+  <div class="glass-card anim-item visible" style="padding:18px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
+      <div style="min-width:0;">
+        <h3 class="syne" style="font-size:16px;font-weight:700;">{{ lot.name }}</h3>
+        <p style="font-size:12px;color:var(--text-secondary);margin-top:2px;">📍 {{ lot.city }}</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+        <span class="badge {% if lot.is_active %}badge-green{% else %}badge-amber{% endif %}">
+          {% if lot.is_active %}Live{% else %}Pending{% endif %}
+        </span>
+        {% if lot.has_pending_edit %}
+        <span class="badge badge-indigo" title="Vendor edit awaiting admin approval">📝 Edit pending</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;font-size:12px;color:var(--text-secondary);margin:10px 0 14px;">
+      <span>🅿️ {{ lot.total_slots }} slots</span>
+      <span>·</span>
+      <span style="color:#10B981;">{{ lot.available_count }} free</span>
+    </div>
+    <div class="occ-bar" style="margin-bottom:14px;">
+      <div class="occ-fill" style="width:{{ ((lot.available_count / lot.total_slots * 100)|round|int) if lot.total_slots > 0 else 0 }}%;background:#10B981;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+      <a href="{{ url_for('vendor_lot_grid', lid=lot.id) }}" class="btn-secondary btn-sm">Slots</a>
+      <a href="{{ url_for('edit_lot', lid=lot.id) }}" class="btn-secondary btn-sm">✏️ Edit</a>
+      <a href="https://www.google.com/maps/?q={{ lot.latitude }},{{ lot.longitude }}" target="_blank" class="btn-secondary btn-sm">🗺️ Map</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="glass-card" style="padding:48px;text-align:center;">
+  <div style="font-size:42px;margin-bottom:8px;">🏗️</div>
+  <h3 class="syne" style="font-weight:700;font-size:16px;margin-bottom:6px;">No lots yet</h3>
+  <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">Add your first parking lot to get started.</p>
+  <a href="{{ url_for('add_lot') }}" class="btn-primary">➕ Add Lot</a>
+</div>
+{% endif %}
+
+<h2 class="syne" style="font-size:18px;font-weight:700;margin:30px 0 14px;">Recent Reservations</h2>
+<div class="glass-card" style="overflow:hidden;">
+{% if reservations %}
+<div style="overflow-x:auto;">
+<table class="data-table">
+<thead><tr><th>Customer</th><th>Lot</th><th>Slot</th><th>Vehicle</th><th>Entry</th><th>Amount</th><th>Status</th></tr></thead>
+<tbody>
+{% for r in reservations %}
+<tr>
+  <td>{{ r.customer.name }}</td>
+  <td>{{ r.slot.lot.name }}</td>
+  <td>{{ r.slot.label }}</td>
+  <td>{{ r.vehicle_no }}</td>
+  <td style="color:var(--text-muted);">{{ to_ist(r.entry_time).strftime('%d %b %H:%M') }}</td>
+  <td>{% if r.amount_paid %}₹{{ r.amount_paid|int }}{% else %}—{% endif %}</td>
+  <td><span class="badge {% if r.status=='active' %}badge-green{% elif r.status=='completed' %}badge-indigo{% else %}badge-red{% endif %}">{{ r.status }}</span></td>
+</tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% else %}
+<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:14px;">No reservations yet.</div>
+{% endif %}
+</div>
+
+<script>
+/* AJAX live refresh of vendor stats */
+window.SE_AUTOREFRESH = function(){
+  // Reuse api_lots which is public — sums across vendor's lots
+  fetch('/api/lots', {cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    if(!d.ok) return;
+    var myLots = d.lots; // limited to active; for full numbers we'll just trust render
+  }).catch(function(){});
+};
+</script>
+{% endblock %}

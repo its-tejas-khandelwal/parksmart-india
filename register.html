@@ -1,10 +1,37 @@
 {% extends "base.html" %}
-{% block title %}404 — Page Not Found{% endblock %}
+{% block title %}Register — SpotEasy{% endblock %}
 {% block content %}
-<div style="text-align:center;padding:80px 20px;">
-  <div style="font-size:80px;margin-bottom:16px;">🅿️</div>
-  <h1 class="syne gradient-text" style="font-size:48px;font-weight:800;margin-bottom:8px;">404</h1>
-  <p style="color:var(--text-secondary);font-size:18px;margin-bottom:28px;">This parking spot doesn't exist.</p>
-  <a href="{{ url_for('index') }}" class="btn-primary">← Back to Home</a>
+<div style="max-width:480px;margin:32px auto;">
+  <div class="glass-card anim-item visible" style="padding:36px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <h1 class="syne" style="font-size:24px;font-weight:700;margin-bottom:6px;">Create Account</h1>
+      <p style="color:var(--text-secondary);font-size:14px;">Join SpotEasy — Smart Parking India</p>
+    </div>
+    <form method="post" id="regForm">
+      <div style="display:flex;background:rgba(255,255,255,0.04);border:1px solid var(--border-subtle);border-radius:10px;padding:4px;margin-bottom:22px;">
+        <button type="button" id="btnCust" onclick="setRole('customer')" style="flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:linear-gradient(135deg,#6366F1,#22D3EE);color:white;">🚗 Customer</button>
+        <button type="button" id="btnVend" onclick="setRole('vendor')" style="flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--text-secondary);">🏢 Vendor</button>
+      </div>
+      <input type="hidden" name="role" id="roleField" value="customer"/>
+      <div style="margin-bottom:13px;"><label class="label-text">Full Name</label><input type="text" name="name" class="inp" placeholder="Your name" required/></div>
+      <div style="margin-bottom:13px;"><label class="label-text">Email</label><input type="email" name="email" class="inp" placeholder="you@example.com" required/></div>
+      <div style="margin-bottom:13px;"><label class="label-text">Phone (optional)</label><input type="tel" name="phone" class="inp" placeholder="+91 …"/></div>
+      <div style="margin-bottom:18px;"><label class="label-text">Password</label><input type="password" name="password" class="inp" placeholder="At least 8 characters" required minlength="8"/></div>
+      <button type="submit" class="btn-primary" style="width:100%;padding:12px;">Create Account →</button>
+    </form>
+    <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-secondary);">
+      Already have one? <a href="{{ url_for('login') }}" style="color:#22D3EE;text-decoration:none;font-weight:600;">Login</a>
+    </p>
+  </div>
 </div>
+<script>
+function setRole(r){
+  document.getElementById('roleField').value = r;
+  var c = document.getElementById('btnCust'), v = document.getElementById('btnVend');
+  var on = 'background:linear-gradient(135deg,#6366F1,#22D3EE);color:white;';
+  var off = 'background:transparent;color:var(--text-secondary);';
+  if(r==='customer'){ c.style.cssText='flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;'+on; v.style.cssText='flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;'+off; }
+  else{ v.style.cssText='flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;'+on; c.style.cssText='flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;'+off; }
+}
+</script>
 {% endblock %}
