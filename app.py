@@ -196,8 +196,11 @@ def push_notification(user_id, title, body='', icon='🔔', url=''):
         u = db.session.get(User, user_id)
         if u and u.notify_email and u.email:
             html = f'<div style="font-family:Inter,sans-serif;padding:24px;"><h2 style="color:#16a34a;">{icon} {title}</h2><p>{body}</p><p style="color:#9ca3af;font-size:12px;">— SpotEasy India</p></div>'
-            try: send_email(u.email, f'SpotEasy: {title}', html)
-            except Exception: pass
+            
+            # --- FIX APPLIED HERE ---
+            # Send the email in a background thread so the screen doesn't freeze!
+            threading.Thread(target=send_email, args=(u.email, f'SpotEasy: {title}', html)).start()
+            
         return n
     except Exception as e:
         db.session.rollback(); print('[Notify]', e)
