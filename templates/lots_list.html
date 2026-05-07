@@ -392,7 +392,9 @@ if(locateMeBtn){
 
 document.addEventListener('se:geo', function(){
   placeUserMarker(false);
-  fitMapToContext(true);
+  // I REMOVED the fitMapToContext(true) line here.
+  // Now it will update the blue dot on the map as you move, 
+  // but it will NOT violently yank the map camera away from you!
 });
 
 function haversine(a, b){
