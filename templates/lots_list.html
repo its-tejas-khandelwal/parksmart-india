@@ -275,7 +275,8 @@ function fitMapToContext(preferUserZoom){
   }catch(e){}
 }
 
-function placeMarkers(data){
+/* --- CHANGE 1: Added skipMapCenter parameter --- */
+function placeMarkers(data, skipMapCenter){
   Object.keys(lotMarkers).forEach(function(id){
     try{ map.removeLayer(lotMarkers[id]); }catch(e){}
   });
@@ -305,7 +306,11 @@ function placeMarkers(data){
     lotMarkers[String(lot.id)] = marker;
   });
 
-  fitMapToContext(false);
+  /* --- CHANGE 1 PART B: Wrap in if statement --- */
+  if (!skipMapCenter) {
+    fitMapToContext(false);
+  }
+  
   safeInvalidateMap();
 }
 
@@ -441,7 +446,10 @@ window.SE_AUTOREFRESH = function(){
     if(!d.ok || !d.lots) return;
     lotsData = d.lots;
     document.getElementById('lotCountText').textContent = d.lots.length + ' active lot' + (d.lots.length === 1 ? '' : 's') + ' available now';
-    placeMarkers(d.lots);
+    
+    /* --- CHANGE 2: Pass true here to block map reset --- */
+    placeMarkers(d.lots, true); 
+    
     d.lots.forEach(function(lot){
       var card = document.querySelector('.lot-card[data-lot-id="'+ lot.id +'"]');
       if(!card) return;
